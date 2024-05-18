@@ -1,3 +1,4 @@
 __MACOSX
 .venv
 .DS_Store
+__pycache__
