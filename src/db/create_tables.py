@@ -9,9 +9,12 @@ def create_tables():
         
         with connection.cursor() as cursor:
             print('Users created')
-            cursor.execute('''CREATE TABLE users
-                           (user_id SERIAL PRIMARY KEY,
-                           name VARCHAR (50) NOT NULL);''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS notifications 
+                                (id BIGSERIAL PRIMARY KEY,
+                                tg_id BIGINT NOT NULL,
+                                message VARCHAR (250),
+                                date TIMESTAMP NOT NULL
+                                );''')
     except Exception as _ex:
         print(f'We are fucked: {_ex}')
     finally:
