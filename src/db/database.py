@@ -30,15 +30,19 @@ def create_tables(cursor):
     '''
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS gr_notif 
-                                (id BIGSERIAL PRIMARY KEY,
-                                tg_id BIGINT NOT NULL,
-                                message VARCHAR (250),
-                                tz INTEGER NOT NULL
-                                );
-                           CREATE TABLE IF NOT EXISTS notif
-                           (id BIGSERIAL PRIMARY KEY,
-                           group_id BIGINT NOT NULL REFERENCES gr_notif (id) ON DELETE CASCADE,
-                           date TIMESTAMPTZ NOT NULL);''')
+                    (id BIGSERIAL PRIMARY KEY,
+                    tg_id BIGINT NOT NULL,
+                    message VARCHAR (250),
+                    tz INTEGER NOT NULL
+                    );
+                    CREATE TABLE IF NOT EXISTS notif
+                    (id BIGSERIAL PRIMARY KEY,
+                    group_id BIGINT NOT NULL REFERENCES gr_notif (id) ON DELETE CASCADE,
+                    date TIMESTAMPTZ NOT NULL);
+                    CREATE TABLE IF NOT EXISTS admin
+                    (id SERIAL PRIMARY KEY,
+                    group_id BIGINT NOT NULL,
+                    admin_id BIGINT NOT NULL);''')
     
     return None
 
@@ -50,7 +54,8 @@ def drop_tables(cursor):
     '''
 
     cursor.execute('''DROP TABLE IF EXISTS notif;
-                           DROP TABLE IF EXISTS gr_notif;''')
+                        DROP TABLE IF EXISTS gr_notif;
+                        DROP TABLE IF EXISTS group;''')
     
     return None
 
@@ -135,4 +140,27 @@ def delete_group_notifications(cursor, id: int):
 
     cursor.execute('DELETE FROM gr_notif WHERE id = %s;', (id,))
 
+    return None
+
+
+@database_func
+def get_admins(cursor, group_id: int):
+    '''
+    Получение админов группы
+    '''
+
+    cursor.execute("SELECT admin_id FROM group WHERE group_id = %s", (group_id,))
+    admins = cursor.fetchall()
+    return admins
+
+
+@database_func
+def add_admins(cursor, group_id: int, admins: list[int]):
+    '''
+    Добавление админов в бд
+    '''
+    
+    for admin in admins:
+        cursor.execute('INSERT INTO group (group_id, admin_id) VALUES (%s, %s)', (group_id, admin))
+    
     return None
