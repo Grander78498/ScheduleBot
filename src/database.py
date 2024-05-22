@@ -1,5 +1,5 @@
-from . import *
-import datetime
+import psycopg2
+from .config import *
 
 
 def database_func(func):
@@ -29,20 +29,26 @@ def create_tables(cursor):
     Функция будет вызываться при каждом запуске бота
     '''
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS gr_notif 
+    cursor.execute('''CREATE TABLE IF NOT EXISTS admins
                     (id BIGSERIAL PRIMARY KEY,
                     tg_id BIGINT NOT NULL,
-                    message VARCHAR (250),
-                    tz INTEGER NOT NULL
-                    );
-                    CREATE TABLE IF NOT EXISTS notif
+                    group_tg_id BIGINT NOT NULL,
+                    group_name VARCHAR (128));
+                   
+                    CREATE TABLE IF NOT EXISTS queue
                     (id BIGSERIAL PRIMARY KEY,
-                    group_id BIGINT NOT NULL REFERENCES gr_notif (id) ON DELETE CASCADE,
-                    date TIMESTAMPTZ NOT NULL);
-                    CREATE TABLE IF NOT EXISTS admin
+                    message VARCHAR (250),
+                    date TIMESTAMPTZ NOT NULL,
+                    tz INT NOT NULL,
+                    creator_id BIGINT NOT NULL,
+                    group_tg_id BIGINT NOT NULL);
+                   
+                    CREATE TABLE IF NOT EXISTS users
                     (id SERIAL PRIMARY KEY,
-                    group_id BIGINT NOT NULL,
-                    admin_id BIGINT NOT NULL);''')
+                    tg_id BIGINT NOT NULL,
+                    full_name VARCHAR (128),
+                    vote_time TIMESTAMPTZ NOT NULL,
+                    queue_id BIGINT NOT NULL REFERENCES queue (id) ON DELETE CASCADE);''')
     
     return None
 
@@ -53,17 +59,25 @@ def drop_tables(cursor):
     Удалить таблицы - служебная функция, ПРОСТО ТАК НЕ ИСПОЛЬЗОВАТЬ!!!
     '''
 
-    cursor.execute('''DROP TABLE IF EXISTS notif;
-                        DROP TABLE IF EXISTS gr_notif;
-                        DROP TABLE IF EXISTS group;''')
+    cursor.execute('''DROP TABLE IF EXISTS admins;
+                        DROP TABLE IF EXISTS users;
+                        DROP TABLE IF EXISTS queue;''')
     
     return None
 
 
 @database_func
-def insert_notifications(cursor, tg_id: int, message: str, dates: list[str], timezone: int):
+def add_admins(cursor, group_id: int, admins: list[int], group_name: str):
+    for admin_id in admins:
+        cursor.execute("""INSERT INTO admins (tg_id, group_id, group_name) VALUES (%s, %s, %s)""", (admin_id, group_id, group_name))
+
+    return None
+
+
+@database_func
+def add_queue(cursor, message: str, date: list[str], timezone: int, creator_id: int, group_id: int):
     '''
-    Добавить напоминалки в бд
+    Добавить очереди в бд
     Возвращает созданные напоминания
     
     tg_id - id пользователя в тг
@@ -71,36 +85,30 @@ def insert_notifications(cursor, tg_id: int, message: str, dates: list[str], tim
     dates - даты напоминаний
     '''
 
-    cursor.execute('INSERT INTO gr_notif (tg_id, message, tz) VALUES (%s, %s, %s) RETURNING id;', (tg_id, message, timezone))
-    group_id = cursor.fetchone()
-    for date in dates:
-        cursor.execute('INSERT INTO notif (group_id, date) VALUES (%s, %s);', (group_id, date))
-    cursor.execute('SELECT message, date, tz FROM gr_notif LEFT JOIN notif ON gr_notif.id = group_id WHERE tg_id = %s ORDER BY date;', (tg_id,))
-    info = cursor.fetchall()
-
-    return [{key: value for key, value in 
-                     zip(['message', 'date', 'timezone'], notification)} 
-                     for notification in info]
+    cursor.execute('INSERT INTO gr_notif (message, date, tz, creator_id, group_tg_id) VALUES (%s, %s, %s, %s, %s);',
+                    (message, date, timezone, creator_id, group_id))
+    
+    return None
 
 
 @database_func
-def get_all_notifications(cursor):
+def get_queue_notifications(cursor):
     '''
     Получить все напоминания, которые нужно отправить сейчас
     Используется только внутри программы для проверки, какие напоминалки нужно отправить
     '''
     
-    cursor.execute("""SELECT tg_id, message, date, tz FROM gr_notif LEFT JOIN notif ON gr_notif.id = group_id
-                            WHERE GREATEST(NOW() - date, date - NOW()) < interval '1 MINUTE' ORDER BY date;""")
-    all_notifications = cursor.fetchall()
+    cursor.execute("""SELECT group_tg_id, message, date, tz FROM queue
+                            WHERE NOW() - date < interval '1 HOUR' ORDER BY date;""")
+    queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
-                    zip(['tg_id', 'message', 'date', 'timezone'], notification)} 
-                     for notification in all_notifications]
+                    zip(['group_id', 'message', 'date', 'timezone'], notification)} 
+                    for notification in queue_notifications]
         
 
 @database_func
-def get_user_notifications(cursor, tg_id: int):
+def get_admin_queues(cursor, tg_id: int):
     '''
     Получить все напоминания, которые есть у пользователя
     Возвращает АБСОЛЮТНО всю информацию о напоминаниях, включая id в бд - это очень важно, т.к. по этому же id возможно удаление, поэтому id никуда не девать!
@@ -108,13 +116,13 @@ def get_user_notifications(cursor, tg_id: int):
     tg_id - id пользователя tg
     '''
 
-    cursor.execute("""SELECT tg_id, group_id, notif.id AS notif_id, message, tz FROM gr_notif
-                            LEFT JOIN notif ON gr_notif.id = group_id WHERE tg_id = %s ORDER BY group_id, date;""", (tg_id,))
-    user_notifications = cursor.fetchall()
+    cursor.execute("""SELECT tg_id, message, date, tz, admins.group_tg_id, group_name FROM admins
+                    LEFT JOIN queue ON admins.group_tg_id = queue.group_tg_id WHERE tg_id = %s""", (tg_id,))
+    admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
-                     zip(['tg_id', 'group_id', 'notif_id', 'message', 'timezone'], notification)} 
-                     for notification in user_notifications]
+                     zip(['tg_id', 'message', 'date', 'timezone', 'group_id', 'group_name'], queue)} 
+                     for queue in admin_queues]
         
 
 @database_func
@@ -149,18 +157,6 @@ def get_admins(cursor, group_id: int):
     Получение админов группы
     '''
 
-    cursor.execute("SELECT admin_id FROM group WHERE group_id = %s", (group_id,))
+    cursor.execute("SELECT tg_id, group_name FROM admins WHERE group_tg_id = %s", (group_id,))
     admins = cursor.fetchall()
     return admins
-
-
-@database_func
-def add_admins(cursor, group_id: int, admins: list[int]):
-    '''
-    Добавление админов в бд
-    '''
-    
-    for admin in admins:
-        cursor.execute('INSERT INTO group (group_id, admin_id) VALUES (%s, %s)', (group_id, admin))
-    
-    return None
