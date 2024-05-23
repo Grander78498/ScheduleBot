@@ -69,7 +69,7 @@ def drop_tables(cursor):
 @database_func
 def add_admins(cursor, group_id: int, admins: list[int], group_name: str):
     for admin_id in admins:
-        cursor.execute("""INSERT INTO admins (tg_id, group_id, group_name) VALUES (%s, %s, %s)""", (admin_id, group_id, group_name))
+        cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name) VALUES (%s, %s, %s)""", (admin_id, group_id, group_name))
 
     return None
 

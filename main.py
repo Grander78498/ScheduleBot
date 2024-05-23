@@ -2,6 +2,5 @@ from src import database
 
 database.drop_tables()
 database.create_tables()
-database.insert_notifications(81677486, 'Lol',
-                              ['21.05.2024 19:28', '21.05.2024 19:29', '21.05.2024 19:26', '21.05.2024 19:27'], '3')
-print(database.get_user_notifications(81677486))
+database.add_admins(127124, [2142418, 12442133], 'Говно')
+print(database.get_admins(127124))
