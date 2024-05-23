@@ -1,5 +1,5 @@
 import psycopg2
-from .config import *
+from config import *
 
 
 def database_func(func):
@@ -117,12 +117,12 @@ def get_admin_queues(cursor, tg_id: int):
     tg_id - id пользователя tg
     '''
 
-    cursor.execute("""SELECT tg_id, message, date, tz, admins.group_tg_id, group_name FROM admins
+    cursor.execute("""SELECT message, date, tz, group_name FROM admins
                     LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s""", (tg_id,))
     admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
-                     zip(['tg_id', 'message', 'date', 'timezone', 'group_id', 'group_name'], queue)} 
+                     zip(['message', 'date', 'timezone', 'group_name'], queue)} 
                      for queue in admin_queues]
 
 
@@ -201,4 +201,20 @@ def get_admins(cursor, group_id: int):
 
     cursor.execute("SELECT tg_id, group_name FROM admins WHERE group_tg_id = %s", (group_id,))
     admins = cursor.fetchall()
-    return admins
+    return [{key: value for key, value in 
+                     zip(['tg_id', 'group_name'], admin)} 
+                     for admin in admins] 
+
+
+@database_func
+def get_admin_groups(cursor, tg_id: int):
+    '''
+    Получение групп у админа
+    '''
+    
+    cursor.execute("SELECT group_tg_id, group_name FROM admins WHERE tg_id = %s", (tg_id,))
+    admin_groups = cursor.fetchall()
+
+    return [{key: value for key, value in 
+                     zip(['group_tg_id', 'group_name'], group)} 
+                     for group in admin_groups]
