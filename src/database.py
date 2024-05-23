@@ -75,14 +75,16 @@ def add_admins(cursor, group_id: int, admins: list[int], group_name: str):
 
 
 @database_func
-def add_queue(cursor, message: str, date: list[str], timezone: int, creator_id: int, group_id: int):
+def add_queue(cursor, message: str, date: str, timezone: int, creator_id: int, group_id: int):
     '''
     Добавить очереди в бд
     Возвращает созданные напоминания
     
-    tg_id - id пользователя в тг
     message - описание напоминалки
-    dates - даты напоминаний
+    date - дата начала очереди
+    timezone - часовой пояс по Гринвичу
+    creator_id - id создателя очереди
+    group_id - id группы, в которой создана очередь
     '''
 
     cursor.execute('INSERT INTO gr_notif (message, date, tz, creator_id, group_tg_id) VALUES (%s, %s, %s, %s, %s);',
@@ -94,8 +96,8 @@ def add_queue(cursor, message: str, date: list[str], timezone: int, creator_id: 
 @database_func
 def get_queue_notifications(cursor):
     '''
-    Получить все напоминания, которые нужно отправить сейчас
-    Используется только внутри программы для проверки, какие напоминалки нужно отправить
+    Получить все напоминания о начале очереди (через час), которые нужно отправить
+    Используется только внутри программы
     '''
     
     cursor.execute("""SELECT group_tg_id, message, date, tz FROM queue
@@ -110,43 +112,83 @@ def get_queue_notifications(cursor):
 @database_func
 def get_admin_queues(cursor, tg_id: int):
     '''
-    Получить все напоминания, которые есть у пользователя
-    Возвращает АБСОЛЮТНО всю информацию о напоминаниях, включая id в бд - это очень важно, т.к. по этому же id возможно удаление, поэтому id никуда не девать!
+    Получить все очереди, которые есть у админа (как у создателя)
 
     tg_id - id пользователя tg
     '''
 
     cursor.execute("""SELECT tg_id, message, date, tz, admins.group_tg_id, group_name FROM admins
-                    LEFT JOIN queue ON admins.group_tg_id = queue.group_tg_id WHERE tg_id = %s""", (tg_id,))
+                    LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s""", (tg_id,))
     admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
                      zip(['tg_id', 'message', 'date', 'timezone', 'group_id', 'group_name'], queue)} 
                      for queue in admin_queues]
-        
+
 
 @database_func
-def delete_one_notification(cursor, id: int):
-    '''
-    Удаление конкретной напоминалки
+def add_user_to_queue(cursor, queue_id: int, tg_id: int, full_name: str, vote_date: str):
+    """
+    Добавить пользователя в очередь
 
-    id - id в БД!
+    queue_id - id очереди,
+    tg_id - id пользователя,
+    full_name - полное имя пользователя
+    vote_date - дата голосования
+    """
+
+    cursor.execute("""INSERT INTO users (tg_id, full_name, vote_date, queue_id)
+                   VALUES (%s, %s, %s, %s)""", (tg_id, full_name, vote_date, queue_id))
+    
+    return None
+
+
+@database_func
+def get_queue(cursor, queue_id: int):
+    """
+    Получение списка очереди
+
+    queue_id - id очереди в бд
+    """
+
+
+    cursor.execute("""SELECT message, date, tz, creator_id, group_tg_id FROM queue WHERE id = %s""", (queue_id,))
+    queue_info = cursor.fetchone()
+
+    cursor.execute("""SELECT tg_id, full_name, vote_date FROM users WHERE queue_id = %s ORDER BY vote_date""", (queue_id))
+    queue_members = cursor.fetchall()
+
+    return ({'message': queue_info[0], 'date': queue_info[1], 'creator_id': queue_info[2], 'group_id': queue_info[3]}), \
+            [{key: value for key, value in
+             zip(['tg_id', 'full_name', 'vote_date'], queue_member)}
+             for queue_member in queue_members]
+
+
+@database_func
+def delete_queue(cursor, queue_id: int):
+    '''
+    Удаление очереди целиком
+
+    queue_id - id очереди в бд
     '''
 
-    cursor.execute('DELETE FROM notif WHERE id = %s;', (id,))
+
+    cursor.execute("""DELETE FROM queue WHERE id = %s""", (queue_id,))
 
     return None
 
 
 @database_func
-def delete_group_notifications(cursor, id: int):
+def delete_queue_member(cursor, queue_id: int, tg_id: int):
     '''
-    Удаление группы напоминалок
+    Удаление одного участника из группы
 
-    id - id в БД!
+    queue_id - id очереди из бд
+    tg_id - id удаляемого пользователя
     '''
 
-    cursor.execute('DELETE FROM gr_notif WHERE id = %s;', (id,))
+
+    cursor.execute("""DELETE FROM users WHERE queue_id = %s AND tg_id = %s""", (queue_id, tg_id))
 
     return None
 
