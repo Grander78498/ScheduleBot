@@ -87,7 +87,7 @@ def add_queue(cursor, message: str, date: str, timezone: int, creator_id: int, g
     group_id - id группы, в которой создана очередь
     '''
 
-    cursor.execute('INSERT INTO gr_notif (message, date, tz, creator_id, group_tg_id) VALUES (%s, %s, %s, %s, %s);',
+    cursor.execute('INSERT INTO queue (message, date, tz, creator_id, group_tg_id) VALUES (%s, %s, %s, %s, %s);',
                     (message, date, timezone, creator_id, group_id))
     
     return None

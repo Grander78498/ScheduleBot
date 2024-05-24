@@ -15,12 +15,12 @@ def check_admin(user_id : int):
 
 def add_queue(data_dict):
     '''Функия для ...'''
-    # {'Text': 'fdsdfdsfs', 'year': 2024, 'month': 5, 'day': 25, 'timezone': '0', 'hm': '12:09', group_id: id_int, creator_id: id_int}
+    # {'text': 'fdsdfdsfs', 'year': 2024, 'month': 5, 'day': 25, 'timezone': '0', 'hm': '12:09', group_id: id_int, creator_id: id_int}
     message = data_dict['text']
     timezone = int(data_dict['timezone']) + 3
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
-    date = f'{data_dict['day']}.{data_dict['month']}.{data_dict['year']} {data_dict['hm']}+{timezone}'
+    date = f"{data_dict['day']}.{data_dict['month']}.{data_dict['year']} {data_dict['hm']}+{timezone}"
     database.add_queue(message, date, timezone, creator_id, group_id)
 
 
@@ -45,7 +45,7 @@ def print_queue(queue_id: int):
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     group_info, users_info = queue_info
     res_string = 'Формирование очереди завершено\n'
-    res_string += f'Название очереди: {group_info['message']}\n'
+    res_string += f"Название очереди: {group_info['message']}\n"
     for index, user in enumerate(users_info, 1):
         res_string += (str(index) + '. ')
         res_string += user['full_name']
