@@ -1,8 +1,8 @@
-FROM ubuntu:20.04
+FROM python:3.10
 
-COPY src .
-COPY requirements.txt .
-COPY main.py .
+COPY src/ src/
+COPY main.py /
+COPY requirements.txt /
 
 RUN pip install -r requirements.txt
 
