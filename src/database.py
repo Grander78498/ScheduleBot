@@ -113,7 +113,7 @@ def get_queue_notifications(cursor):
 
 
 @database_func
-def get_queue_notifications(cursor):
+def get_queue_ready(cursor):
     '''
     Получить все очереди, которые должны сейчас запуститься
     Используется только внутри программы
