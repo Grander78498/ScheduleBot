@@ -33,6 +33,7 @@ def create_tables(cursor):
                     (id BIGSERIAL PRIMARY KEY,
                     tg_id BIGINT NOT NULL,
                     group_tg_id BIGINT NOT NULL,
+                    thread_id BIGINT,
                     group_name VARCHAR (128));
                    
                     CREATE TABLE IF NOT EXISTS queue
@@ -67,9 +68,10 @@ def drop_tables(cursor):
 
 
 @database_func
-def add_admins(cursor, group_id: int, admins: list[int], group_name: str):
+def add_admins(cursor, group_id: int, admins: list[int], group_name: str, thread_id: int):
     for admin_id in admins:
-        cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name) VALUES (%s, %s, %s)""", (admin_id, group_id, group_name))
+        cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name, thread_id) 
+                       VALUES (%s, %s, %s, %s)""", (admin_id, group_id, group_name, thread_id))
 
     return None
 
@@ -100,12 +102,30 @@ def get_queue_notifications(cursor):
     Используется только внутри программы
     '''
     
-    cursor.execute("""SELECT group_tg_id, message, date, tz FROM queue
+    cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name, date, tz FROM queue 
+                   LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
                             WHERE NOW() - date < interval '1 HOUR' ORDER BY date;""")
     queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
-                    zip(['group_id', 'message', 'date', 'timezone'], notification)} 
+                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'date', 'timezone'], notification)} 
+                    for notification in queue_notifications]
+
+
+@database_func
+def get_queue_notifications(cursor):
+    '''
+    Получить все очереди, которые должны сейчас запуститься
+    Используется только внутри программы
+    '''
+    
+    cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name, date, tz FROM queue 
+                   LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
+                            WHERE GREATEST(NOW() - date, date - NOW()) < interval '1 MINUTE' ORDER BY date;""")
+    queue_notifications = cursor.fetchall()
+
+    return [{key: value for key, value in 
+                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'date', 'timezone'], notification)} 
                     for notification in queue_notifications]
         
 
