@@ -108,7 +108,7 @@ def get_queue_notifications(cursor):
     queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
-                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'date', 'timezone'], notification)} 
+                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name', 'date', 'timezone'], notification)} 
                     for notification in queue_notifications]
 
 
@@ -125,7 +125,7 @@ def get_queue_ready(cursor):
     queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
-                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'date', 'timezone'], notification)} 
+                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name', 'date', 'timezone'], notification)} 
                     for notification in queue_notifications]
         
 
