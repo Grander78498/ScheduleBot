@@ -89,8 +89,9 @@ def get_queue_notif():
 
 def already_queue():
     queue_data=database.get_queue_ready()
-    print(queue_data, "in logic")
     for elem in queue_data:
+        if not elem['is_started']:
+            database.update_queue_ready(elem['queue_id'])
         elem['message'] = f"Очередь {elem['message']} была создана"
         elem['admin_message'] = f"Очередь {elem['message']} была создана в группе {elem['group_name']}"
-    return queue_data
+    return [elem for elem in queue_data if not elem['is_started']]

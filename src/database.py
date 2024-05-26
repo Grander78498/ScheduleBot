@@ -44,6 +44,8 @@ def create_tables(cursor):
                     message VARCHAR (4097),
                     date TIMESTAMPTZ NOT NULL,
                     tz INT NOT NULL,
+                    is_started BOOLEAN NOT NULL,
+                    is_notified BOOLEAN NOT NULL,
                     creator_id BIGINT NOT NULL,
                     group_tg_id BIGINT NOT NULL);
                    
@@ -93,7 +95,7 @@ def add_queue(cursor, message: str, date: str, timezone: int, creator_id: int, g
     group_id - id группы, в которой создана очередь
     '''
 
-    cursor.execute('INSERT INTO queue (message, date, tz, creator_id, group_tg_id) VALUES (%s, %s, %s, %s, %s);',
+    cursor.execute('INSERT INTO queue (message, date, tz, is_started, is_notified, creator_id, group_tg_id) VALUES (%s, %s, %s, FALSE, FALSE, %s, %s);',
                     (message, date, timezone, creator_id, group_id))
     
     return None
@@ -134,8 +136,10 @@ def get_queue_ready(cursor):
 
 
 @database_func
-def update_queue(cursor, queue_id: int):
-    cursor.execute("""UPDATE queue SET is_""")
+def update_queue_ready(cursor, queue_id: int):
+    cursor.execute("""UPDATE queue SET is_started = TRUE WHERE id = %s""", (queue_id,))
+
+    return None
         
 
 @database_func
