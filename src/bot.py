@@ -3,8 +3,8 @@ from datetime import date
 from multiprocessing import Process,Manager, Value
 import logging
 import datetime
-import logic
-import database
+from . import logic
+from . import database
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
