@@ -131,6 +131,11 @@ def get_queue_ready(cursor):
     return [{key: value for key, value in 
                     zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name', 'date', 'timezone'], notification)} 
                     for notification in queue_notifications]
+
+
+@database_func
+def update_queue(cursor, queue_id: int):
+    cursor.execute("""UPDATE queue SET is_""")
         
 
 @database_func
