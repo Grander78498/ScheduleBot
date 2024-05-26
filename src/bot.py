@@ -4,6 +4,7 @@ from multiprocessing import Process,Manager, Value
 import logging
 import datetime
 import logic
+import database
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
@@ -33,7 +34,7 @@ a = []
 
 admins = {}
 
-test = [datetime.datetime.strptime("23/05/2024 22:18", "%d/%m/%Y %H:%M"),
+test = [datetime.datetime.strptime("26/05/2024 15:50", "%d/%m/%Y %H:%M"),
         datetime.datetime.strptime("20/05/2024 19:07", "%d/%m/%Y %H:%M"),
         datetime.datetime.strptime("20/05/2024 19:12", "%d/%m/%Y %H:%M")]
 
@@ -92,6 +93,7 @@ class StopVoteCallback(CallbackData, prefix="stop"):
     ID: int
     message_id: int
     queueID : int
+    thread_id: int
 
 
 class GroupSelectCallback(CallbackData, prefix="selectGroup"):
@@ -118,7 +120,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             userId = admin.user.id
             admins[int(message.chat.id)][0].append(userId)
             d.append(userId)
-        logic.add_admin(message.chat.id, d, message.chat.title)
+        logic.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
         await message.answer(str(message.message_thread_id))
         await message.answer("Здарова пидарасы, для того, чтобы созжать очередь админ группы должен написать в личное сообщение боту")
     elif message.chat.type=="private":
@@ -169,6 +171,7 @@ async def Day(call : CallbackQuery, callback_data : DayCallback, state: FSMConte
         await state.update_data(day=callback_data.day)
         await state.set_state(States.timezone)
         await call.message.answer("Введите разницу времени с Москвой")
+        await call.answer()
 
 
 
@@ -306,44 +309,34 @@ async def echo(message: Message, state: FSMContext) -> None:
 
 @dp.callback_query(StopVoteCallback.filter(F.ID!=0))
 async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
-    votes = list(voted[callback_data.ID].items())
-    s = ""
-    for i in votes:
-        s+= str(i[1][1])+ "  " + str(i[1][0])+ "\n"
-    await bot.send_message(chat_id=callback_data.ID, text="Голосование завершено \n {}".format(s[:-1]))
+    st = logic.print_queue(callback_data.queueID)
+    await bot.send_message(chat_id=callback_data.ID, text=st,message_thread_id=callback_data.thread_id)
     await bot.delete_message(chat_id=callback_data.ID, message_id=callback_data.message_id)
     await call.answer()
 
 
 @dp.message() 
-async def choose_your_dinner(): 
-    for i in users:
-        voted[i] = {}
-        builder = InlineKeyboardBuilder()
-        queue_id = 123454321
-        builder.button(text="Голосуй, Анасуй", callback_data=QueueIDCallback(queueID=queue_id))
-        builder1 = InlineKeyboardBuilder()
-        a = await bot.send_message(chat_id=i, text='Привет!!!', reply_markup=builder.as_markup())
-        builder1.button(text="Stop IT", callback_data=StopVoteCallback(ID=i, message_id=a.message_id, queueID=queue_id))
-        await bot.send_message(chat_id=399319082, text="Вы вправе нажать", reply_markup=builder1.as_markup())
+async def queue_send(queue_id,creator_id, thread_id, group_id, message, admin_message): 
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
+    builder1 = InlineKeyboardBuilder()
+    a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id)
+    builder1.button(text="Завершить очередь", callback_data=StopVoteCallback(ID=group_id, message_id=a.message_id, queueID=queue_id, thread_id=thread_id))
+    await bot.send_message(chat_id=creator_id, text=admin_message, reply_markup=builder1.as_markup())
 
  
 async def scheduler():
     while True:
-        for i in test:
-            print(i, (i-datetime.datetime.now()).seconds)
-            if (i-datetime.datetime.now()).seconds<60:
-                await choose_your_dinner()
+        already_queue = logic.already_queue()
+        for i in already_queue:
+            await queue_send(i["queue_id"], i["creator_id"], i["thread_id"], i["group_id"], i["message"], i["admin_message"])
         await asyncio.sleep(60) 
          
 @dp.callback_query(QueueIDCallback.filter(F.queueID!=0))
 async def voting(call: CallbackQuery,callback_data : QueueIDCallback):
-    if call.from_user.id not in voted[call.message.chat.id]:
-        lenv = len(voted[call.message.chat.id])
-        voted[call.message.chat.id][call.from_user.id] = [lenv+1, call.from_user.full_name]
-        await bot.send_message(chat_id=call.from_user.id, text="{} с id {} отметился в {} \n Место в очереди {} \n ID очереди {}".format(call.from_user.full_name, call.from_user.id, datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), lenv+1, callback_data.queueID))
-    else:
-        await bot.send_message(chat_id=call.from_user.id, text="{} с id {} отметился в {} \n Место в очереди {} \n ID очереди {}".format(call.from_user.full_name, call.from_user.id, datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), voted[call.message.chat.id][call.from_user.id][0], callback_data.queueID))
+    logic.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name, datetime.datetime.now())
+    mtext = logic.get_queue_position(callback_data.queueID, call.from_user.id)
+    await bot.send_message(chat_id=call.from_user.id, text=mtext)
     await call.answer()
 
 

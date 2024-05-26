@@ -14,7 +14,7 @@ def database_func(func):
             
             with connection.cursor() as cursor:
                 result = func(cursor, *arg)
-        except psycopg2.errorcodes.UNIQUE_VIOLATION as _ex:
+        except psycopg2.errors.lookup('23505') as _ex:
             raise _ex
         except Exception as _ex:
             print(f'We are fucked: {_ex}')
@@ -125,7 +125,7 @@ def get_queue_ready(cursor):
     
     cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name, date, tz FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
-                            WHERE GREATEST(NOW() - date, date - NOW()) < interval '1 MINUTE' ORDER BY date;""")
+                            WHERE NOW() - date < interval '30 SECONDS'  group by queue.id, admins.group_name, admins.thread_id ORDER BY date;""")
     queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
@@ -166,7 +166,7 @@ def add_user_to_queue(cursor, queue_id: int, tg_id: int, full_name: str, vote_da
     vote_date - дата голосования
     """
 
-    cursor.execute("""INSERT INTO users (tg_id, full_name, vote_date, queue_id)
+    cursor.execute("""INSERT INTO users (tg_id, full_name, vote_time, queue_id)
                    VALUES (%s, %s, %s, %s)""", (tg_id, full_name, vote_date, queue_id))
     
     return None
@@ -184,7 +184,7 @@ def get_queue(cursor, queue_id: int):
     cursor.execute("""SELECT message, date, tz, creator_id, group_tg_id FROM queue WHERE id = %s""", (queue_id,))
     queue_info = cursor.fetchone()
 
-    cursor.execute("""SELECT tg_id, full_name, vote_date FROM users WHERE queue_id = %s ORDER BY vote_date""", (queue_id))
+    cursor.execute("""SELECT tg_id, full_name, vote_time FROM users WHERE queue_id = %s ORDER BY vote_time""", (queue_id, ))
     queue_members = cursor.fetchall()
 
     return ({'message': queue_info[0], 'date': queue_info[1], 'creator_id': queue_info[2], 'group_id': queue_info[3]}), \
