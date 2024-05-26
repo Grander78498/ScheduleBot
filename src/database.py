@@ -1,4 +1,5 @@
 import psycopg2
+import psycopg2.errorcodes
 from config import *
 
 
@@ -13,6 +14,8 @@ def database_func(func):
             
             with connection.cursor() as cursor:
                 result = func(cursor, *arg)
+        except psycopg2.errorcodes.UNIQUE_VIOLATION as _ex:
+            raise _ex
         except Exception as _ex:
             print(f'We are fucked: {_ex}')
         finally:
@@ -49,7 +52,8 @@ def create_tables(cursor):
                     tg_id BIGINT NOT NULL,
                     full_name VARCHAR (128),
                     vote_time TIMESTAMPTZ NOT NULL,
-                    queue_id BIGINT NOT NULL REFERENCES queue (id) ON DELETE CASCADE);''')
+                    queue_id BIGINT NOT NULL REFERENCES queue (id) ON DELETE CASCADE,
+                    UNIQUE (tg_id, queue_id));''')
     
     return None
 
