@@ -3,14 +3,14 @@ import datetime
 import re
 
 
-def add_admin(group_id: int, admins: list[int], group_name: str):
+def add_admin(group_id: int, admins: list[int], group_name: str, thread_id: int):
     '''Функция для ...'''
     adm = database.get_admins(group_id)
     stash = []
     for item in adm:
         stash.append(item.get('tg_id', None))
     admins = [i for i in admins if i not in stash]
-    database.add_admins(group_id, admins, group_name)
+    database.add_admins(group_id, admins, group_name, thread_id)
 
 
 def check_admin(user_id: int):
@@ -56,7 +56,7 @@ def print_queue(queue_id: int):
     res_string += f"Название очереди: {group_info['message']}\n"
     for index, user in enumerate(users_info, 1):
         res_string += (str(index) + '. ')
-        res_string += user['full_name']
+        res_string += user['full_name']+"\n"
     return res_string
 
 
@@ -89,6 +89,7 @@ def get_queue_notif():
 
 def already_queue():
     queue_data=database.get_queue_ready()
+    print(queue_data, "in logic")
     for elem in queue_data:
         elem['message'] = f"Очередь {elem['message']} была создана"
         elem['admin_message'] = f"Очередь {elem['message']} была создана в группе {elem['group_name']}"
