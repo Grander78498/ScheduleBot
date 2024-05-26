@@ -106,13 +106,13 @@ def get_queue_notifications(cursor):
     Используется только внутри программы
     '''
     
-    cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name, date, tz FROM queue 
+    cursor.execute("""SELECT queue.id, thread_id, queue.group_tg_id, message FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
                             WHERE NOW() - date < interval '1 HOUR' ORDER BY date;""")
     queue_notifications = cursor.fetchall()
 
     return [{key: value for key, value in 
-                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name', 'date', 'timezone'], notification)} 
+                    zip(['queue_id', 'thread_id', 'group_id', 'message'], notification)}
                     for notification in queue_notifications]
 
 

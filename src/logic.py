@@ -5,10 +5,15 @@ import re
 
 def add_admin(group_id: int, admins: list[int], group_name: str):
     '''Функция для ...'''
+    adm = database.get_admins(group_id)
+    stash = []
+    for item in adm:
+        stash.append(item.get('tg_id', None))
+    admins = [i for i in admins if i not in stash]
     database.add_admins(group_id, admins, group_name)
 
 
-def check_admin(user_id : int):
+def check_admin(user_id: int):
     '''Функция для ...'''
     return database.get_admin_groups(user_id)
 
@@ -36,7 +41,10 @@ def check_timezone(timezone):
 
 def add_user_to_queue(queue_id: int, tg_id: int, full_name: str, vote_date: datetime.datetime):
     '''Функция для ...'''
-    database.add_user_to_queue(queue_id, tg_id, full_name, str(vote_date))
+    try:
+        database.add_user_to_queue(queue_id, tg_id, full_name, str(vote_date))
+    except Exception:
+        pass
 
 
 def print_queue(queue_id: int):
@@ -62,14 +70,26 @@ def get_creator_queues(user_id: int):
         res += str(index) + '. '
         res += queue['message'] + '\n'
         res += 'Название группы: ' + queue['full_name'] + '\n'
-        my_date = (queue['date'] + datetime.timedelta(hours = queue['timezone'])).strftime('%Y-%m-%d %H:%M')
+        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'])).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
     return res
 
 
-def get_queue_position(queue_id: int):
+def get_queue_position(queue_id: int,tg_id: int):
     '''Функция для ...'''
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     queue_info = database.get_queue(queue_id)
-    _, users_info = queue_info 
-    return 'Ваше место в очереди: {}'.format(len(users_info))
+    _, users_info = queue_info
+    mas=[user_info['tg_id'] for user_info in users_info]
+    return 'Ваше место в очереди: {}'.format(mas.index(tg_id)+1)
+
+def get_queue_notif():
+    data=database.get_queue_notifications()
+    return data
+
+def already_queue():
+    queue_data=database.get_queue_ready()
+    for elem in queue_data:
+        elem['message'] = f"Очередь {elem['message']} была создана"
+        elem['admin_message'] = f"Очередь {elem['message']} была создана в группе {elem['group_name']}"
+    return queue_data
