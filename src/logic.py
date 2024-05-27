@@ -73,7 +73,7 @@ def get_creator_queues(user_id: int):
     return res
 
 
-def get_queue_position(queue_id: int,tg_id: int):
+def get_queue_position(queue_id: int, tg_id: int):
     '''Функция для ...'''
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     queue_info = database.get_queue(queue_id)

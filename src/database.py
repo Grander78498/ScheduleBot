@@ -177,12 +177,12 @@ def get_admin_queues(cursor, tg_id: int):
     tg_id - id пользователя tg
     '''
 
-    cursor.execute("""SELECT message, date, tz, group_name FROM admins
+    cursor.execute("""SELECT queue.id, message, date, tz, group_name FROM admins
                     LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s""", (tg_id,))
     admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
-                     zip(['message', 'date', 'timezone', 'group_name'], queue)} 
+                     zip(['queue_id', 'message', 'date', 'timezone', 'group_name'], queue)} 
                      for queue in admin_queues]
 
 
