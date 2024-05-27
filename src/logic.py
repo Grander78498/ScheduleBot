@@ -67,10 +67,10 @@ def get_creator_queues(user_id: int):
     for index, queue in enumerate(creator_queues, 1):
         res += str(index) + '. '
         res += queue['message'] + '\n'
-        res += 'Название группы: ' + queue['full_name'] + '\n'
-        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'])).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
+        res += 'Название группы: ' + queue['group_name'] + '\n'
+        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone']-3)).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return res
+    return res, len(creator_queues)
 
 
 def get_queue_position(queue_id: int,tg_id: int):

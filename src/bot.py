@@ -104,12 +104,15 @@ class QueueIDCallback(CallbackData, prefix="queueID"):
     queueID : int
 
 
+#class QueueSelectCallback(CallbackData, prefix="queueID"):
+
+
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
-    builder.button(text="Удалить очередь", callback_data="delete")
     builder.adjust(1)
     if message.chat.type=="group" or message.chat.type=="supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
@@ -159,6 +162,16 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()
 
+
+
+@dp.callback_query(F.data.in_(['print']))
+async def printQueue(call: CallbackQuery, state: FSMContext):
+    st,lenq = logic.get_creator_queues(call.from_user.id)
+    builder = InlineKeyboardBuilder()
+    for i in range(1,lenq+1):
+        builder.button(text="{}".format(i), callback_data="aaa")
+    builder.adjust(4)
+    await call.message.answer(st, reply_markup=builder.as_markup())
 
 
 @dp.callback_query(DayCallback.filter(F.day!=0))
@@ -294,7 +307,11 @@ async def echo(message: Message, state: FSMContext) -> None:
             else:
                 await message.answer("Неправильно, попробуй ещё раз")
         if st==States.hm:
-            if logic.check_time(message.text):
+                t =  logic.check_time(message.text):
+                match t:
+                    case "TimeError":
+                        await message.answer("Неправильно, попробуй ещё раз")
+                    case ""
                 await state.update_data(hm=message.text)
                 await putInDb(message, state)
             else:
@@ -317,11 +334,8 @@ async def queue_send(queue_id, thread_id, group_id, message):
     delete_message_id = logic.get_message_id(queue_id)[0]
     await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-    builder1 = InlineKeyboardBuilder()
     a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id, parse_mode='html')
     logic.update_queue_message_id(queue_id, a.message_id)
-    # builder1.button(text="Завершить очередь", callback_data=StopVoteCallback(ID=group_id, message_id=a.message_id, queueID=queue_id, thread_id=thread_id))
-    # await bot.send_message(chat_id=creator_id, text=admin_message, reply_markup=builder1.as_markup())
 
 @dp.message() 
 async def queue_notif_send(queue_id,thread_id, group_id, message): 
