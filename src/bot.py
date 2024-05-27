@@ -315,12 +315,13 @@ async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
 async def queue_send(queue_id,creator_id, thread_id, group_id, message, admin_message): 
     builder = InlineKeyboardBuilder()
     delete_message_id = logic.get_message_id(queue_id)[0]
-    await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
+    # await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
     builder1 = InlineKeyboardBuilder()
-    a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id)
-    builder1.button(text="Завершить очередь", callback_data=StopVoteCallback(ID=group_id, message_id=a.message_id, queueID=queue_id, thread_id=thread_id))
-    await bot.send_message(chat_id=creator_id, text=admin_message, reply_markup=builder1.as_markup())
+    a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id, parse_mode='html')
+    logic.update_queue_message_id(queue_id, a.message_id)
+    # builder1.button(text="Завершить очередь", callback_data=StopVoteCallback(ID=group_id, message_id=a.message_id, queueID=queue_id, thread_id=thread_id))
+    # await bot.send_message(chat_id=creator_id, text=admin_message, reply_markup=builder1.as_markup())
 
 @dp.message() 
 async def queue_notif_send(queue_id,thread_id, group_id, message): 
@@ -344,10 +345,18 @@ async def scheduler():
          
 @dp.callback_query(QueueIDCallback.filter(F.queueID!=0))
 async def voting(call: CallbackQuery,callback_data : QueueIDCallback):
-    logic.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name, datetime.datetime.now())
-    mtext = logic.get_queue_position(callback_data.queueID, call.from_user.id)
-    await bot.send_message(chat_id=call.from_user.id, text=mtext)
-    await call.answer()
+    try:
+        logic.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name, datetime.datetime.now())
+        group_id, queue_message_id, queue = logic.print_queue(callback_data.queueID)
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
+        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id, reply_markup=builder.as_markup(), parse_mode='html')
+    except Exception:
+        pass
+    # mtext = logic.get_queue_position(callback_data.queueID, call.from_user.id)
+    # await bot.send_message(chat_id=call.from_user.id, text=mtext)
+    finally:
+        await call.answer()
 
 
  

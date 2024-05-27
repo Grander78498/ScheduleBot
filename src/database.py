@@ -49,7 +49,8 @@ def create_tables(cursor):
                     is_notified BOOLEAN NOT NULL,
                     creator_id BIGINT NOT NULL,
                     group_tg_id BIGINT NOT NULL,
-                    message_id BIGINT);
+                    message_id BIGINT,
+                    queue_message_id BIGINT);
                    
                     CREATE TABLE IF NOT EXISTS users
                     (id SERIAL PRIMARY KEY,
@@ -59,6 +60,13 @@ def create_tables(cursor):
                     queue_id BIGINT NOT NULL REFERENCES queue (id) ON DELETE CASCADE,
                     UNIQUE (tg_id, queue_id));''')
     
+    return None
+
+
+@database_func
+def update_queue_message_id(cursor, queue_id: int, queue_message_id: int):
+    cursor.execute("""UPDATE queue SET queue_message_id = %s WHERE id = %s""", (queue_message_id, queue_id))
+
     return None
 
 
@@ -204,15 +212,15 @@ def get_queue(cursor, queue_id: int):
     """
 
 
-    cursor.execute("""SELECT message, date, tz, creator_id, queue.group_tg_id FROM queue LEFT JOIN admins 
+    cursor.execute("""SELECT message, creator_id, queue.group_tg_id, queue_message_id FROM queue LEFT JOIN admins 
                     ON queue.creator_id = admins.tg_id WHERE queue.id = %s""", (queue_id,))
     queue_info = cursor.fetchone()
 
     cursor.execute("""SELECT tg_id, full_name, vote_time FROM users WHERE queue_id = %s ORDER BY vote_time""", (queue_id, ))
     queue_members = cursor.fetchall()
 
-    return ({'message': queue_info[0], 'date': queue_info[1],
-             'creator_id': queue_info[2], 'group_id': queue_info[3]}), \
+    return ({'message': queue_info[0], 'creator_id': queue_info[1],
+              'group_id': queue_info[2], 'queue_message_id': queue_info[3]}), \
             [{key: value for key, value in
              zip(['tg_id', 'full_name', 'vote_date'], queue_member)}
              for queue_member in queue_members]

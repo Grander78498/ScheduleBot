@@ -40,10 +40,8 @@ def check_timezone(timezone):
 
 def add_user_to_queue(queue_id: int, tg_id: int, full_name: str, vote_date: datetime.datetime):
     '''Функция для ...'''
-    try:
-        database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M'))
-    except Exception:
-        pass
+    database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M'))
+    
 
 
 def print_queue(queue_id: int):
@@ -51,13 +49,13 @@ def print_queue(queue_id: int):
     queue_info = database.get_queue(queue_id)
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     group_info, users_info = queue_info
-    res_string = 'Формирование очереди завершено\n'
-    res_string += f"Название очереди: <b>{group_info['message']}</b>\n"
+    print(group_info)
+    res_string = f"Название очереди: <b>{group_info['message']}</b>\n"
     res_string += "__________________________\n"
     for index, user in enumerate(users_info, 1):
         res_string += (str(index) + '. ')
         res_string += user['full_name']+"\n"
-    return res_string
+    return group_info['group_id'], group_info['queue_message_id'], res_string
 
 
 def get_creator_queues(user_id: int):
@@ -103,3 +101,7 @@ def update_message_id(queue_id: int, message_id: int):
 
 def get_message_id(queue_id: int):
     return database.get_message_id(queue_id)
+
+
+def update_queue_message_id(queue_id: int, queue_message_id: int):
+    database.update_queue_message_id(queue_id, queue_message_id)
