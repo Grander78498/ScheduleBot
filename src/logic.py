@@ -28,9 +28,17 @@ def add_queue(data_dict):
     database.add_queue(message, date, timezone, creator_id, group_id)
 
 
-def check_time(time):
+def check_time(time, year, month, day):
     '''Функция для проверки корректности времени'''
-    return bool(re.fullmatch(r'(([01]\d)|(2[0-3])):[0-5]\d', time))
+    check_time = bool(re.fullmatch(r'(([01]\d)|(2[0-3])):[0-5]\d', time))
+    if not check_time:
+        return 'TimeError'
+    current_date = datetime.datetime.now()
+    given_date = datetime.datetime.strptime(
+        f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
+    if (given_date - current_date).total_seconds() > 120:
+        return "It's okay it's fine"
+    return "EarlyQueueError"
 
 
 def check_timezone(timezone):
