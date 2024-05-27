@@ -177,12 +177,12 @@ def get_admin_queues(cursor, tg_id: int):
     tg_id - id пользователя tg
     '''
 
-    cursor.execute("""SELECT message, date, tz, group_name FROM admins
+    cursor.execute("""SELECT queue.id, message, date, tz, group_name FROM admins
                     LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s""", (tg_id,))
     admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
-                     zip(['message', 'date', 'timezone', 'group_name'], queue)} 
+                     zip(['queue_id', 'message', 'date', 'timezone', 'group_name'], queue)} 
                      for queue in admin_queues]
 
 
@@ -233,11 +233,12 @@ def delete_queue(cursor, queue_id: int):
 
     queue_id - id очереди в бд
     '''
+    cursor.execute("""SELECT group_tg_id, queue_message_id FROM queue WHERE id = %s;""", (queue_id,))
+    queue_info = cursor.fetchone()
+    cursor.execute("""DELETE FROM queue WHERE id = %s;""", (queue_id,))
 
+    return queue_info
 
-    cursor.execute("""DELETE FROM queue WHERE id = %s""", (queue_id,))
-
-    return None
 
 
 @database_func
@@ -248,11 +249,21 @@ def delete_queue_member(cursor, queue_id: int, tg_id: int):
     queue_id - id очереди из бд
     tg_id - id удаляемого пользователя
     '''
-
-
+    cursor.execute("""SELECT group_tg_id, queue_message_id FROM queue WHERE id = %s;""", (queue_id,))
+    queue_info = cursor.fetchone()
     cursor.execute("""DELETE FROM users WHERE queue_id = %s AND tg_id = %s""", (queue_id, tg_id))
 
-    return None
+    return queue_info
+
+
+
+@database_func
+def update_queue_name(cursor, queue_id: int, message: str):
+    cursor.execute("""UPDATE queue SET message = %s WHERE id = %s""", (message, queue_id))
+    cursor.execute("""SELECT group_tg_id, queue_message_id FROM queue WHERE id = %s;""", (queue_id,))
+    queue_info = cursor.fetchone()
+
+    return queue_info
 
 
 @database_func

@@ -36,7 +36,7 @@ def check_time(time, year, month, day):
     current_date = datetime.datetime.now()
     given_date = datetime.datetime.strptime(
         f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
-    if (given_date - current_date).total_seconds() > 120:
+    if (given_date - current_date).total_seconds() > 7200:
         return "It's okay it's fine"
     return "EarlyQueueError"
 
@@ -69,19 +69,19 @@ def print_queue(queue_id: int):
 def get_creator_queues(user_id: int):
     '''Функция для ...'''
     creator_queues = database.get_admin_queues(user_id)
-    if not creator_queues:
-        return 'У вас нет созданных очередей('
+    if creator_queues[0]["queue_id"] is None:
+        return [], 0, 'У вас нет созданных очередей(', []
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(creator_queues, 1):
         res += str(index) + '. '
         res += queue['message'] + '\n'
         res += 'Название группы: ' + queue['group_name'] + '\n'
-        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone']-3)).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
+        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'])).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return res, len(creator_queues)
+    return [queue['queue_id'] for queue in creator_queues], len(creator_queues), res, [queue['message'] for queue in creator_queues]
 
 
-def get_queue_position(queue_id: int,tg_id: int):
+def get_queue_position(queue_id: int, tg_id: int):
     '''Функция для ...'''
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     queue_info = database.get_queue(queue_id)
@@ -113,3 +113,10 @@ def get_message_id(queue_id: int):
 
 def update_queue_message_id(queue_id: int, queue_message_id: int):
     database.update_queue_message_id(queue_id, queue_message_id)
+
+
+def delete_queue(queue_id: int):
+    return database.delete_queue(queue_id)
+
+def rename_queue(queue_id : int, message: str):
+    database.update_queue_name(queue_id, message)

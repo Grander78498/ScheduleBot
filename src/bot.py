@@ -70,6 +70,7 @@ class States(StatesGroup):
     RemoveMessageyear = State()
     RemoveMessagemonth = State()
     RemoveMessageday = State()
+    renameQueue = State()
     text = State()
     year = State()
     month = State()
@@ -104,8 +105,22 @@ class QueueIDCallback(CallbackData, prefix="queueID"):
     queueID : int
 
 
-#class QueueSelectCallback(CallbackData, prefix="queueID"):
+class QueueSelectCallback(CallbackData, prefix="queueSelect"):
+    queueID : int
+    delete_message_id : int
+    queueName: str
 
+
+class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
+    queueID : int
+
+
+class DeleteQueueMemberCallback(CallbackData, prefix="DeleteQueueMember"):
+    queueID : int
+
+
+class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
+    queueID : int
 
 
 @dp.message(Command("start"))
@@ -121,9 +136,9 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             userId = admin.user.id
             d.append(userId)
         logic.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
-        await message.answer("Здарова пидарасы, для того, чтобы созжать очередь админ группы должен написать в личное сообщение боту")
+        await message.answer("Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту")
     elif message.chat.type=="private":
-        await message.answer("Здарова пидарас\n", reply_markup=builder.as_markup())
+        await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
     users.append(message.chat.id)
 
 
@@ -151,7 +166,6 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
             builder = InlineKeyboardBuilder()
             builder.button(text="Создать очередь", callback_data="add")
             builder.button(text="Вывести существующие очереди", callback_data="print")
-            builder.button(text="Удалить очередь", callback_data="delete")
             builder.adjust(1)
             await call.message.answer("У тебя нет групп, где ты админ", reply_markup=builder.as_markup())
         else:
@@ -166,12 +180,63 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    st,lenq = logic.get_creator_queues(call.from_user.id)
+    queueList,lenq,st, names = logic.get_creator_queues(call.from_user.id)
+    r = await call.message.answer(st)
+    if lenq>0:
+        builder = InlineKeyboardBuilder()
+        for i in range(lenq):
+            builder.button(text="{}".format(i+1), callback_data=QueueSelectCallback(queueID=queueList[i], delete_message_id = r.message_id, queueName=names[i]))
+        builder.adjust(4)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=r.message_id, reply_markup= builder.as_markup())
+    await call.answer()
+
+
+@dp.callback_query(QueueSelectCallback.filter(F.queueID!=0))
+async def QueueChosen(call : CallbackQuery, callback_data : QueueSelectCallback):
     builder = InlineKeyboardBuilder()
-    for i in range(1,lenq+1):
-        builder.button(text="{}".format(i), callback_data="aaa")
-    builder.adjust(4)
-    await call.message.answer(st, reply_markup=builder.as_markup())
+    builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID))
+    builder.button(text="Удалить участника очереди", callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID))
+    builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=callback_data.queueID))
+#    builder.button(text="\u25C0", callback_data="back")
+    builder.adjust(1)
+    await bot.edit_message_text(text="Выбрана очередь {}".format(callback_data.queueName), chat_id=call.message.chat.id, message_id=callback_data.delete_message_id)
+    await bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=callback_data.delete_message_id, reply_markup= builder.as_markup())
+
+# Удалить очередь, удалить участника, изменить название, кнопка назад
+
+    await call.answer()
+
+@dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID!=0))
+async def deleted_queue(call : CallbackQuery, callback_data : DeleteQueueCallback):
+    group_id, queue_message_id, queue = logic.print_queue(callback_data.queueID)
+    await bot.send_message(chat_id=call.message.chat.id, text=queue,  parse_mode='html')
+    await call.message.answer("Введите номер участника")
+    await call.answer()
+
+
+
+@dp.callback_query(RenameQueueCallback.filter(F.queueID!=0))
+async def deleted_queue(call : CallbackQuery, callback_data : RenameQueueCallback,  state: FSMContext):
+    await call.message.answer("Введите новое название очереди")
+    await state.set_state(States.renameQueue)
+    await state.update_data(renameQueue=callback_data.queueID)
+    await call.answer()
+    
+
+
+
+@dp.callback_query(DeleteQueueCallback.filter(F.queueID!=0))
+async def deleted_queue(call : CallbackQuery, callback_data : DeleteQueueCallback):
+    group_id, message_id = logic.delete_queue(callback_data.queueID)
+    if message_id is not None:
+        await bot.delete_message(chat_id=group_id, message_id=message_id)
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Создать очередь", callback_data="add")
+    builder.button(text="Вывести существующие очереди", callback_data="print")
+    builder.adjust(1)
+    await call.message.answer("Очередь удалена", reply_markup= builder.as_markup())
+    await call.answer()
+
 
 
 @dp.callback_query(DayCallback.filter(F.day!=0))
@@ -271,6 +336,8 @@ async def putInDb(message: Message, state: FSMContext) -> None:
             del data["RemoveMessagemonth"]
         if "RemoveMessageday" in data:
             del data["RemoveMessageday"]
+        if "renameQueue" in data:
+            del data["renameQueue"]
         data["creator_id"] = message.chat.id
         print(data)
     except:
@@ -279,7 +346,6 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
-    builder.button(text="Удалить очередь", callback_data="delete")
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
 
@@ -289,7 +355,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
 @dp.message(F.text)
 async def echo(message: Message, state: FSMContext) -> None:
     st = await state.get_state()
-    if (message.chat.type=="group" and message.from_user.id in admins[message.chat.id]) or message.chat.type=="private":
+    if message.chat.type=="private":
         if st==States.text:
             builder = InlineKeyboardBuilder()
             builder.button(text="{}".format(datetime.datetime.now().year), callback_data=YearCallback(year=datetime.datetime.now().year))
@@ -305,20 +371,31 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await state.update_data(timezone=message.text)
                 await state.set_state(States.hm)
             else:
-                await message.answer("Неправильно, попробуй ещё раз")
+                await message.answer("Неправильно, попробуйте ещё раз")
         if st==States.hm:
             data = await state.get_data()
             t =  logic.check_time(message.text, data["year"], data["month"], data["day"])
             match t:
                 case "TimeError":
-                    await message.answer("Неправильно, попробуй ещё раз")
+                    await message.answer("Неправильно, попробуйте ещё раз")
                 case "EarlyQueueError":
                     await message.answer("Очередь задана слишком рано, можно задавать минимум через 2 часа")
                 case _:
                     await state.update_data(hm=message.text)
                     await putInDb(message, state)
-    else:
-        await message.answer("Составлять напоминания в группе могут только администраторы")
+        if st==States.renameQueue:
+            data = await state.get_data()
+            logic.rename_queue(data["renameQueue"], message.text)
+            group_id, queue_message_id, queue = logic.print_queue(data["renameQueue"])
+            await bot.send_message(chat_id=message.chat.id, text=queue, parse_mode='html')
+            builder = InlineKeyboardBuilder()
+            builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=data["renameQueue"]))
+            builder.button(text="Удалить участника очереди", callback_data=DeleteQueueMemberCallback(queueID=data["renameQueue"]))
+            builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=data["renameQueue"]))
+        #    builder.button(text="\u25C0", callback_data="back")
+            builder.adjust(1)
+            await bot.send_message(chat_id=message.chat.id, text="Выбрана очередь {}".format(message.text), reply_markup=builder.as_markup())
+
 
 
 @dp.callback_query(StopVoteCallback.filter(F.ID!=0))
