@@ -78,7 +78,7 @@ def get_creator_queues(user_id: int):
         res += 'Название группы: ' + queue['full_name'] + '\n'
         my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'])).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return res
+    return [queue['queue_id'] for queue in creator_queues], len(creator_queues), res
 
 
 def get_queue_position(queue_id: int, tg_id: int):
