@@ -4,5 +4,3 @@ services:
       context: .
     container_name: bot
     network_mode: "host"
-    environment:
-      - host=host

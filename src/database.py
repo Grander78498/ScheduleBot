@@ -37,7 +37,8 @@ def create_tables(cursor):
                     tg_id BIGINT NOT NULL,
                     group_tg_id BIGINT NOT NULL,
                     thread_id BIGINT,
-                    group_name VARCHAR (128));
+                    group_name VARCHAR (128),
+                    UNIQUE (tg_id, group_tg_id));
                    
                     CREATE TABLE IF NOT EXISTS queue
                     (id BIGSERIAL PRIMARY KEY,
@@ -47,7 +48,8 @@ def create_tables(cursor):
                     is_started BOOLEAN NOT NULL,
                     is_notified BOOLEAN NOT NULL,
                     creator_id BIGINT NOT NULL,
-                    group_tg_id BIGINT NOT NULL);
+                    group_tg_id BIGINT NOT NULL,
+                    message_id BIGINT);
                    
                     CREATE TABLE IF NOT EXISTS users
                     (id SERIAL PRIMARY KEY,
@@ -58,6 +60,20 @@ def create_tables(cursor):
                     UNIQUE (tg_id, queue_id));''')
     
     return None
+
+
+@database_func
+def update_message_id(cursor, queue_id: int, message_id: int):
+    cursor.execute("""UPDATE queue SET message_id = %s WHERE id = %s""", (message_id, queue_id))
+
+    return None
+
+@database_func
+def get_message_id(cursor, queue_id: int):
+    cursor.execute("""SELECT message_id FROM queue WHERE id = %s""", (queue_id,))
+    result = cursor.fetchone()
+
+    return result
 
 
 @database_func
@@ -74,9 +90,8 @@ def drop_tables(cursor):
 
 
 @database_func
-def add_admins(cursor, group_id: int, admins: list[int], group_name: str, thread_id: int):
-    for admin_id in admins:
-        cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name, thread_id) 
+def add_admin(cursor, group_id: int, admin_id: int, group_name: str, thread_id: int):
+    cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name, thread_id) 
                        VALUES (%s, %s, %s, %s)""", (admin_id, group_id, group_name, thread_id))
 
     return None
@@ -110,8 +125,10 @@ def get_queue_notifications(cursor):
     
     cursor.execute("""SELECT queue.id, thread_id, queue.group_tg_id, message FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
-                            WHERE NOW() - date < interval '1 HOUR' ORDER BY date;""")
+                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '2 MINUTES' AND is_notified = FALSE
+                            GROUP BY queue.id, admins.thread_id ORDER BY date;""")
     queue_notifications = cursor.fetchall()
+    cursor.execute("""UPDATE queue SET is_notified = TRUE WHERE GREATEST(date - NOW(), NOW() - date) < interval '2 MINUTES';""")
 
     return [{key: value for key, value in 
                     zip(['queue_id', 'thread_id', 'group_id', 'message'], notification)}
@@ -125,13 +142,15 @@ def get_queue_ready(cursor):
     Используется только внутри программы
     '''
     
-    cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name, is_started FROM queue 
+    cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
-                            WHERE NOW() - date < interval '30 SECONDS'  group by queue.id, admins.group_name, admins.thread_id ORDER BY date;""")
+                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '30 SECONDS' AND is_started = FALSE
+                            GROUP BY queue.id, admins.group_name, admins.thread_id ORDER BY date;""")
     queue_notifications = cursor.fetchall()
+    cursor.execute("""UPDATE queue SET is_started = TRUE WHERE GREATEST(date - NOW(), NOW() - date) < interval '30 SECONDS';""")
 
     return [{key: value for key, value in 
-                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name', 'is_started'], notification)} 
+                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name'], notification)} 
                     for notification in queue_notifications]
 
 
@@ -185,13 +204,15 @@ def get_queue(cursor, queue_id: int):
     """
 
 
-    cursor.execute("""SELECT message, date, tz, creator_id, group_tg_id FROM queue WHERE id = %s""", (queue_id,))
+    cursor.execute("""SELECT message, date, tz, creator_id, queue.group_tg_id FROM queue LEFT JOIN admins 
+                    ON queue.creator_id = admins.tg_id WHERE queue.id = %s""", (queue_id,))
     queue_info = cursor.fetchone()
 
     cursor.execute("""SELECT tg_id, full_name, vote_time FROM users WHERE queue_id = %s ORDER BY vote_time""", (queue_id, ))
     queue_members = cursor.fetchall()
 
-    return ({'message': queue_info[0], 'date': queue_info[1], 'creator_id': queue_info[2], 'group_id': queue_info[3]}), \
+    return ({'message': queue_info[0], 'date': queue_info[1],
+             'creator_id': queue_info[2], 'group_id': queue_info[3]}), \
             [{key: value for key, value in
              zip(['tg_id', 'full_name', 'vote_date'], queue_member)}
              for queue_member in queue_members]

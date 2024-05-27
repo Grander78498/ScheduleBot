@@ -5,12 +5,11 @@ import re
 
 def add_admin(group_id: int, admins: list[int], group_name: str, thread_id: int):
     '''Функция для ...'''
-    adm = database.get_admins(group_id)
-    stash = []
-    for item in adm:
-        stash.append(item.get('tg_id', None))
-    admins = [i for i in admins if i not in stash]
-    database.add_admins(group_id, admins, group_name, thread_id)
+    for admin in admins:
+        try:
+            database.add_admin(group_id, admin, group_name, thread_id)
+        except Exception:
+            continue
 
 
 def check_admin(user_id: int):
@@ -53,7 +52,8 @@ def print_queue(queue_id: int):
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     group_info, users_info = queue_info
     res_string = 'Формирование очереди завершено\n'
-    res_string += f"Название очереди: {group_info['message']}\n"
+    res_string += f"Название очереди: <b>{group_info['message']}</b>\n"
+    res_string += "__________________________\n"
     for index, user in enumerate(users_info, 1):
         res_string += (str(index) + '. ')
         res_string += user['full_name']+"\n"
@@ -79,19 +79,27 @@ def get_queue_position(queue_id: int,tg_id: int):
     '''Функция для ...'''
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     queue_info = database.get_queue(queue_id)
-    _, users_info = queue_info
+    queue_info, users_info = queue_info
     mas=[user_info['tg_id'] for user_info in users_info]
-    return 'Ваше место в очереди: {}'.format(mas.index(tg_id)+1)
+    return 'Ваше место в очереди {}: {}'.format(queue_info['message'], mas.index(tg_id)+1)
 
 def get_queue_notif():
     data=database.get_queue_notifications()
+    for elem in data:
+        elem['message'] = f"Напоминание!!!\nОчередь {elem['message']} будет создана через час"
     return data
 
 def already_queue():
     queue_data=database.get_queue_ready()
     for elem in queue_data:
-        if not elem['is_started']:
-            database.update_queue_ready(elem['queue_id'])
         elem['message'] = f"Очередь {elem['message']} была создана"
-        elem['admin_message'] = f"Очередь {elem['message']} была создана в группе {elem['group_name']}"
-    return [elem for elem in queue_data if not elem['is_started']]
+        elem['admin_message'] = f"{elem['message']} в группе {elem['group_name']}"
+    return queue_data
+
+
+def update_message_id(queue_id: int, message_id: int):
+    database.update_message_id(queue_id, message_id)
+
+
+def get_message_id(queue_id: int):
+    return database.get_message_id(queue_id)

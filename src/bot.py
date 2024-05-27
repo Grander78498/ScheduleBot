@@ -106,7 +106,6 @@ class QueueIDCallback(CallbackData, prefix="queueID"):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
-    global admins
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -114,14 +113,11 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     builder.adjust(1)
     if message.chat.type=="group" or message.chat.type=="supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
-        admins[int(message.chat.id)] = ([], message.chat.title)
         d = []
         for admin in chat_admins:
             userId = admin.user.id
-            admins[int(message.chat.id)][0].append(userId)
             d.append(userId)
         logic.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
-        await message.answer(str(message.message_thread_id))
         await message.answer("Здарова пидарасы, для того, чтобы созжать очередь админ группы должен написать в личное сообщение боту")
     elif message.chat.type=="private":
         await message.answer("Здарова пидарас\n", reply_markup=builder.as_markup())
@@ -167,7 +163,7 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(DayCallback.filter(F.day!=0))
 async def Day(call : CallbackQuery, callback_data : DayCallback, state: FSMContext):
-    if (call.message.chat.type=="group" and call.from_user.id in admins[call.message.chat.id]) or call.message.chat.type=="private":
+    if call.message.chat.type=="private":
         await state.update_data(day=callback_data.day)
         await state.set_state(States.timezone)
         await call.message.answer("Введите разницу времени с Москвой")
@@ -178,7 +174,7 @@ async def Day(call : CallbackQuery, callback_data : DayCallback, state: FSMConte
 
 @dp.callback_query(MonthCallback.filter(F.month!=0))
 async def Month(call : CallbackQuery, callback_data : MonthCallback, state: FSMContext):
-    if (call.message.chat.type=="group" and call.from_user.id in admins[call.message.chat.id]) or call.message.chat.type=="private":
+    if call.message.chat.type=="private":
         await state.update_data(month=callback_data.month)
         await state.set_state(States.day)
         builder = InlineKeyboardBuilder()
@@ -217,7 +213,7 @@ async def Month(call : CallbackQuery, callback_data : MonthCallback, state: FSMC
 
 @dp.callback_query(YearCallback.filter(F.year!=0))
 async def Year(call : CallbackQuery, callback_data : YearCallback, state: FSMContext):
-    if (call.message.chat.type=="group" and call.from_user.id in admins[call.message.chat.id]) or call.message.chat.type=="private":
+    if call.message.chat.type=="private":
         await state.update_data(year=callback_data.year)
         await state.set_state(States.month)
         builder = InlineKeyboardBuilder()
@@ -310,7 +306,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 @dp.callback_query(StopVoteCallback.filter(F.ID!=0))
 async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
     st = logic.print_queue(callback_data.queueID)
-    await bot.send_message(chat_id=callback_data.ID, text=st,message_thread_id=callback_data.thread_id)
+    await bot.send_message(chat_id=callback_data.ID, text=st,message_thread_id=callback_data.thread_id, parse_mode='html')
     await bot.delete_message(chat_id=callback_data.ID, message_id=callback_data.message_id)
     await call.answer()
 
@@ -318,19 +314,33 @@ async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
 @dp.message() 
 async def queue_send(queue_id,creator_id, thread_id, group_id, message, admin_message): 
     builder = InlineKeyboardBuilder()
+    delete_message_id = logic.get_message_id(queue_id)[0]
+    await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
     builder1 = InlineKeyboardBuilder()
     a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id)
     builder1.button(text="Завершить очередь", callback_data=StopVoteCallback(ID=group_id, message_id=a.message_id, queueID=queue_id, thread_id=thread_id))
     await bot.send_message(chat_id=creator_id, text=admin_message, reply_markup=builder1.as_markup())
 
+@dp.message() 
+async def queue_notif_send(queue_id,thread_id, group_id, message): 
+    a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
+    logic.update_message_id(queue_id, a.message_id)
+    
+
  
+
+
+
 async def scheduler():
     while True:
         already_queue = logic.already_queue()
+        hour_not = logic.get_queue_notif()
         for i in already_queue:
             await queue_send(i["queue_id"], i["creator_id"], i["thread_id"], i["group_id"], i["message"], i["admin_message"])
-        await asyncio.sleep(60) 
+        for i in hour_not:
+            await queue_notif_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
+        await asyncio.sleep(20) 
          
 @dp.callback_query(QueueIDCallback.filter(F.queueID!=0))
 async def voting(call: CallbackQuery,callback_data : QueueIDCallback):
