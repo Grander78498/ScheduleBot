@@ -93,7 +93,7 @@ class StopVoteCallback(CallbackData, prefix="stop"):
     ID: int
     message_id: int
     queueID : int
-    thread_id: int
+    thread_id: int | None
 
 
 class GroupSelectCallback(CallbackData, prefix="selectGroup"):

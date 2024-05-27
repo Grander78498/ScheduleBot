@@ -25,7 +25,7 @@ def add_queue(data_dict):
     timezone = int(data_dict['timezone']) + 3
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
-    date = f"{data_dict['day']}.{data_dict['month']}.{data_dict['year']} {data_dict['hm']}+{timezone}"
+    date = f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{timezone}"
     database.add_queue(message, date, timezone, creator_id, group_id)
 
 
@@ -42,7 +42,7 @@ def check_timezone(timezone):
 def add_user_to_queue(queue_id: int, tg_id: int, full_name: str, vote_date: datetime.datetime):
     '''Функция для ...'''
     try:
-        database.add_user_to_queue(queue_id, tg_id, full_name, str(vote_date))
+        database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M'))
     except Exception:
         pass
 
