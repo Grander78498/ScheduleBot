@@ -312,10 +312,10 @@ async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
 
 
 @dp.message() 
-async def queue_send(queue_id,creator_id, thread_id, group_id, message, admin_message): 
+async def queue_send(queue_id, thread_id, group_id, message): 
     builder = InlineKeyboardBuilder()
     delete_message_id = logic.get_message_id(queue_id)[0]
-    # await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
+    await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
     builder1 = InlineKeyboardBuilder()
     a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id, parse_mode='html')
@@ -338,7 +338,7 @@ async def scheduler():
         already_queue = logic.already_queue()
         hour_not = logic.get_queue_notif()
         for i in already_queue:
-            await queue_send(i["queue_id"], i["creator_id"], i["thread_id"], i["group_id"], i["message"], i["admin_message"])
+            await queue_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
         for i in hour_not:
             await queue_notif_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
         await asyncio.sleep(20) 
