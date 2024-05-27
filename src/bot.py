@@ -307,15 +307,16 @@ async def echo(message: Message, state: FSMContext) -> None:
             else:
                 await message.answer("Неправильно, попробуй ещё раз")
         if st==States.hm:
-                t =  logic.check_time(message.text):
-                match t:
-                    case "TimeError":
-                        await message.answer("Неправильно, попробуй ещё раз")
-                    case ""
-                await state.update_data(hm=message.text)
-                await putInDb(message, state)
-            else:
-                await message.answer("Неправильно, попробуй ещё раз")
+            data = await state.get_data()
+            t =  logic.check_time(message.text, data["year"], data["month"], data["day"])
+            match t:
+                case "TimeError":
+                    await message.answer("Неправильно, попробуй ещё раз")
+                case "EarlyQueueError":
+                    await message.answer("Очередь задана слишком рано, можно задавать минимум через 2 часа")
+                case _:
+                    await state.update_data(hm=message.text)
+                    await putInDb(message, state)
     else:
         await message.answer("Составлять напоминания в группе могут только администраторы")
 
