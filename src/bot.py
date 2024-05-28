@@ -435,6 +435,11 @@ async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
     await call.answer()
 
 
+@dp.message()
+async def empty(message: types.Message):
+    await message.answer('Спасибо за добавление бота в группу!')
+
+
 @dp.message() 
 async def queue_send(queue_id, thread_id, group_id, message): 
     builder = InlineKeyboardBuilder()
