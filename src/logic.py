@@ -36,7 +36,7 @@ def check_time(time, year, month, day):
     current_date = datetime.datetime.now()
     given_date = datetime.datetime.strptime(
         f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
-    if (given_date - current_date).total_seconds() > 7200:
+    if (given_date - current_date).total_seconds() > 1:
         return "It's okay it's fine"
     return "EarlyQueueError"
 
@@ -76,7 +76,7 @@ def get_creator_queues(user_id: int):
         res += str(index) + '. '
         res += queue['message'] + '\n'
         res += 'Название группы: ' + queue['group_name'] + '\n'
-        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'])).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
+        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'] - 3)).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
     return [queue['queue_id'] for queue in creator_queues], len(creator_queues), res, [queue['message'] for queue in creator_queues]
 
@@ -120,3 +120,14 @@ def delete_queue(queue_id: int):
 
 def rename_queue(queue_id : int, message: str):
     database.update_queue_name(queue_id, message)
+
+def delete_queue_member(queue_id: int, queue_position: str):
+    _, users_info = database.get_queue(queue_id)
+    try:
+        queue_position = int(queue_position)
+    except Exception:
+        return "Incorrect"
+    if queue_position > len(users_info) or queue_position <= 0:
+        return "Doesn't exist"
+    tg_id = users_info[queue_position - 1]['tg_id']
+    return database.delete_queue_member(queue_id, tg_id)

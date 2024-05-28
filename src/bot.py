@@ -15,11 +15,11 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
 from aiogram.filters.callback_data import CallbackData
+from .config import API_TOKEN
 
 
 
 logging.basicConfig(level=logging.INFO)
-API_TOKEN = "6733084480:AAECacPclPo0emdVottudh9o9yoSqJP7BGs"
 bot = Bot(token=API_TOKEN)
 
 
@@ -71,6 +71,7 @@ class States(StatesGroup):
     RemoveMessagemonth = State()
     RemoveMessageday = State()
     renameQueue = State()
+    deleteQueueMember = State()
     text = State()
     year = State()
     month = State()
@@ -207,16 +208,18 @@ async def QueueChosen(call : CallbackQuery, callback_data : QueueSelectCallback)
     await call.answer()
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID!=0))
-async def deleted_queue(call : CallbackQuery, callback_data : DeleteQueueCallback):
-    group_id, queue_message_id, queue = logic.print_queue(callback_data.queueID)
-    await bot.send_message(chat_id=call.message.chat.id, text=queue,  parse_mode='html')
-    await call.message.answer("Введите номер участника")
+async def delete_queue_member(call : CallbackQuery, callback_data : DeleteQueueMemberCallback, state: FSMContext):
+    _, _, message = logic.print_queue(callback_data.queueID)
+    await call.message.answer(text=message, parse_mode='html')
+    await call.message.answer("Введите номер удаляемого участника")
+    await state.set_state(States.deleteQueueMember)
+    await state.update_data(deleteQueueMember=callback_data.queueID)
     await call.answer()
 
 
 
 @dp.callback_query(RenameQueueCallback.filter(F.queueID!=0))
-async def deleted_queue(call : CallbackQuery, callback_data : RenameQueueCallback,  state: FSMContext):
+async def rename_queue(call : CallbackQuery, callback_data : RenameQueueCallback,  state: FSMContext):
     await call.message.answer("Введите новое название очереди")
     await state.set_state(States.renameQueue)
     await state.update_data(renameQueue=callback_data.queueID)
@@ -387,14 +390,40 @@ async def echo(message: Message, state: FSMContext) -> None:
             data = await state.get_data()
             logic.rename_queue(data["renameQueue"], message.text)
             group_id, queue_message_id, queue = logic.print_queue(data["renameQueue"])
-            await bot.send_message(chat_id=message.chat.id, text=queue, parse_mode='html')
+            try:
+                builder = InlineKeyboardBuilder()
+                builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=data["renameQueue"]))
+                await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue, reply_markup=builder.as_markup(), parse_mode='html')
+            except Exception as _ex:
+                print(_ex)
             builder = InlineKeyboardBuilder()
-            builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=data["renameQueue"]))
-            builder.button(text="Удалить участника очереди", callback_data=DeleteQueueMemberCallback(queueID=data["renameQueue"]))
-            builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=data["renameQueue"]))
-        #    builder.button(text="\u25C0", callback_data="back")
+            builder.button(text="Создать очередь", callback_data="add")
+            builder.button(text="Вывести существующие очереди", callback_data="print")
             builder.adjust(1)
-            await bot.send_message(chat_id=message.chat.id, text="Выбрана очередь {}".format(message.text), reply_markup=builder.as_markup())
+            await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
+
+        if st==States.deleteQueueMember:
+            data = await state.get_data()
+            result = logic.delete_queue_member(data['deleteQueueMember'], message.text)
+            match result:
+                case "Incorrect":
+                    await message.answer("Введён некорректный номер, попробуйте ещё раз")
+                case "Doesn't exist":
+                    await message.answer('Введённой позиции в очереди нет')
+                case _:
+
+                    group_id, queue_message_id, queue = logic.print_queue(data["deleteQueueMember"])
+                    try:
+                        builder = InlineKeyboardBuilder()
+                        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=data["deleteQueueMember"]))
+                        await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue, reply_markup=builder.as_markup(), parse_mode='html')
+                    except Exception as _ex:
+                        print(_ex)
+                    builder = InlineKeyboardBuilder()
+                    builder.button(text="Создать очередь", callback_data="add")
+                    builder.button(text="Вывести существующие очереди", callback_data="print")
+                    builder.adjust(1)
+                    await message.answer("Участник был успешно удалён", reply_markup=builder.as_markup())
 
 
 

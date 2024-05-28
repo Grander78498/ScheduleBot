@@ -178,7 +178,7 @@ def get_admin_queues(cursor, tg_id: int):
     '''
 
     cursor.execute("""SELECT queue.id, message, date, tz, group_name FROM admins
-                    LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s""", (tg_id,))
+                    LEFT JOIN queue ON tg_id = creator_id WHERE tg_id = %s ORDER BY group_name, date""", (tg_id,))
     admin_queues = cursor.fetchall()
 
     return [{key: value for key, value in 
