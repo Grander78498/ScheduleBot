@@ -478,7 +478,7 @@ async def voting(call: CallbackQuery,callback_data : QueueIDCallback):
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
         await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id, reply_markup=builder.as_markup(), parse_mode='html')
     except Exception:
-        pass
+        await call.answer("Вы уже добавлены в очередь")
     # mtext = logic.get_queue_position(callback_data.queueID, call.from_user.id)
     # await bot.send_message(chat_id=call.from_user.id, text=mtext)
     finally:
