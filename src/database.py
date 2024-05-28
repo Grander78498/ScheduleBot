@@ -64,6 +64,14 @@ def create_tables(cursor):
 
 
 @database_func
+def get_thread_id(cursor, admin_id: int, group_id: int):
+    cursor.execute("""SELECT thread_id FROM admins WHERE tg_id = %s AND group_tg_id = %s;""", (admin_id, group_id))
+    result = cursor.fetchone()[0]
+
+    return result
+
+
+@database_func
 def update_queue_message_id(cursor, queue_id: int, queue_message_id: int):
     cursor.execute("""UPDATE queue SET queue_message_id = %s WHERE id = %s""", (queue_message_id, queue_id))
 
@@ -99,6 +107,7 @@ def drop_tables(cursor):
 
 @database_func
 def add_admin(cursor, group_id: int, admin_id: int, group_name: str, thread_id: int):
+    cursor.execute("""UPDATE admins SET thread_id = %s WHERE group_tg_id = %s""", (thread_id, group_id))
     cursor.execute("""INSERT INTO admins (tg_id, group_tg_id, group_name, thread_id) 
                        VALUES (%s, %s, %s, %s)""", (admin_id, group_id, group_name, thread_id))
 
@@ -133,10 +142,11 @@ def get_queue_notifications(cursor):
     
     cursor.execute("""SELECT queue.id, thread_id, queue.group_tg_id, message FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
-                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '2 MINUTES' AND is_notified = FALSE
+                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '1 HOUR' AND is_notified = FALSE
                             GROUP BY queue.id, admins.thread_id ORDER BY date;""")
     queue_notifications = cursor.fetchall()
-    cursor.execute("""UPDATE queue SET is_notified = TRUE WHERE GREATEST(date - NOW(), NOW() - date) < interval '2 MINUTES';""")
+    for queue_notif in queue_notifications:
+        cursor.execute("""UPDATE queue SET is_notified = TRUE WHERE id = %s;""", (queue_notif[0],))
 
     return [{key: value for key, value in 
                     zip(['queue_id', 'thread_id', 'group_id', 'message'], notification)}
@@ -152,10 +162,11 @@ def get_queue_ready(cursor):
     
     cursor.execute("""SELECT queue.id, creator_id, thread_id, queue.group_tg_id, message, group_name FROM queue 
                    LEFT JOIN admins ON queue.group_tg_id = admins.group_tg_id
-                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '30 SECONDS' AND is_started = FALSE
+                            WHERE GREATEST(date - NOW(), NOW() - date) < interval '10 SECONDS' AND is_started = FALSE
                             GROUP BY queue.id, admins.group_name, admins.thread_id ORDER BY date;""")
     queue_notifications = cursor.fetchall()
-    cursor.execute("""UPDATE queue SET is_started = TRUE WHERE GREATEST(date - NOW(), NOW() - date) < interval '30 SECONDS';""")
+    for queue_notif in queue_notifications:
+        cursor.execute("""UPDATE queue SET is_notified = TRUE WHERE id = %s;""", (queue_notif[0],))
 
     return [{key: value for key, value in 
                     zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name'], notification)} 

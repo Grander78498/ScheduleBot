@@ -27,6 +27,8 @@ def add_queue(data_dict):
     date = f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{timezone}"
     database.add_queue(message, date, timezone, creator_id, group_id)
 
+    return database.get_thread_id(creator_id, group_id), date
+
 
 def check_time(time, year, month, day):
     '''Функция для проверки корректности времени'''
@@ -36,7 +38,7 @@ def check_time(time, year, month, day):
     current_date = datetime.datetime.now()
     given_date = datetime.datetime.strptime(
         f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
-    if (given_date - current_date).total_seconds() > 1:
+    if (given_date - current_date).total_seconds() >= 2 * 3600:
         return "It's okay it's fine"
     return "EarlyQueueError"
 

@@ -345,12 +345,14 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         print(data)
     except:
         print("Error")
-    logic.add_queue(data)
+    thread_id, date = logic.add_queue(data)
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
+    await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id, 
+                           text="Очередь {} будет создана {}. За час до этого будет отправлено напоминание".format(data['text'], date))
 
 
 
