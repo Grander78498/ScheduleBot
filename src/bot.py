@@ -437,12 +437,11 @@ async def stopvoting(call : CallbackQuery, callback_data : StopVoteCallback):
     await call.answer()
 
 
-@dp.message()
-async def empty(message: types.Message):
-    await message.answer('Спасибо за добавление бота в группу!')
+#@dp.message()
+#async def empty(message: types.Message):
+#    await message.answer('Спасибо за добавление бота в группу!')
 
 
-@dp.message() 
 async def queue_send(queue_id, thread_id, group_id, message): 
     builder = InlineKeyboardBuilder()
     delete_message_id = logic.get_message_id(queue_id)[0]
@@ -451,7 +450,6 @@ async def queue_send(queue_id, thread_id, group_id, message):
     a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(), message_thread_id=thread_id, parse_mode='html')
     logic.update_queue_message_id(queue_id, a.message_id)
 
-@dp.message() 
 async def queue_notif_send(queue_id,thread_id, group_id, message): 
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
     logic.update_message_id(queue_id, a.message_id)
