@@ -50,7 +50,7 @@ def check_timezone(timezone):
 
 def add_user_to_queue(queue_id: int, tg_id: int, full_name: str, vote_date: datetime.datetime):
     '''Функция для ...'''
-    database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M'))
+    database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M:%S'))
     
 
 

@@ -4,3 +4,4 @@ __MACOSX
 __pycache__
 venv
 .env
+backup.sql
