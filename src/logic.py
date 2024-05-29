@@ -71,7 +71,7 @@ def print_queue(queue_id: int):
 def get_creator_queues(user_id: int):
     '''Функция для ...'''
     creator_queues = database.get_admin_queues(user_id)
-    if creator_queues[0]["queue_id"] is None:
+    if len(creator_queues) == 0 or creator_queues[0]["queue_id"] is None:
         return [], 0, 'У вас нет созданных очередей(', []
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(creator_queues, 1):
