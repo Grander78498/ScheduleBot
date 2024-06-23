@@ -1,6 +1,5 @@
-from src import database
-# from src import bot
-from src import new_database
+from src import db
+from src import bot
 import sys
 import asyncio
 
@@ -8,9 +7,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         match sys.argv[1]:
             case 'drop':
-                database.drop_tables()
+                db.drop_tables()
             case 'test':
-                new_database.main()
+                pass
 
-    # database.create_tables()
-    # asyncio.run(bot.main())
+    db.create_tables()
+    asyncio.run(bot.main())

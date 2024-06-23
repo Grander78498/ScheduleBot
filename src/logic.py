@@ -1,13 +1,18 @@
-from . import database
+from . import db as database
 import datetime
 import re
 
 
 def add_admin(group_id: int, admins: list[int], group_name: str, thread_id: int):
     '''Функция для ...'''
-    for admin in admins:
+    try:
+        database.add_group(group_id, group_name, thread_id)
+    except Exception:
+        pass
+
+    for admin_id in admins:
         try:
-            database.add_admin(group_id, admin, group_name, thread_id)
+            database.add_admin(group_id, admin_id)
         except Exception:
             continue
 
@@ -27,7 +32,7 @@ def add_queue(data_dict):
     date = f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{timezone}"
     database.add_queue(message, date, timezone, creator_id, group_id)
 
-    return database.get_thread_id(creator_id, group_id), date
+    return database.get_thread_id(group_id), date
 
 
 def check_time(time, year, month, day):
@@ -38,7 +43,8 @@ def check_time(time, year, month, day):
     current_date = datetime.datetime.now()
     given_date = datetime.datetime.strptime(
         f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
-    if (given_date - current_date).total_seconds() >= 2 * 3600:
+    # Здесь убрать true при нормальном запуске!!!
+    if True or (given_date - current_date).total_seconds() >= 2 * 3600:
         return "It's okay it's fine"
     return "EarlyQueueError"
 
