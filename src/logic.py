@@ -1,4 +1,4 @@
-from . import db as database
+from src import db as database
 import datetime
 import re
 
@@ -37,8 +37,8 @@ def add_queue(data_dict):
 
 def check_time(time, year, month, day):
     '''Функция для проверки корректности времени'''
-    check_time = bool(re.fullmatch(r'(([01]\d)|(2[0-3])):[0-5]\d', time))
-    if not check_time:
+    check_time_format = bool(re.fullmatch(r'(([01]\d)|(2[0-3])):[0-5]\d', time))
+    if not check_time_format:
         return 'TimeError'
     current_date = datetime.datetime.now()
     given_date = datetime.datetime.strptime(
@@ -57,7 +57,6 @@ def check_timezone(timezone):
 def add_user_to_queue(queue_id: int, tg_id: int, full_name: str, vote_date: datetime.datetime):
     '''Функция для ...'''
     database.add_user_to_queue(queue_id, tg_id, full_name, vote_date.strftime('%Y-%m-%d %H:%M:%S'))
-    
 
 
 def print_queue(queue_id: int):
@@ -70,7 +69,7 @@ def print_queue(queue_id: int):
     res_string += "__________________________\n"
     for index, user in enumerate(users_info, 1):
         res_string += (str(index) + '. ')
-        res_string += user['full_name']+"\n"
+        res_string += user['full_name'] + "\n"
     return group_info['group_id'], group_info['queue_message_id'], res_string
 
 
@@ -84,9 +83,11 @@ def get_creator_queues(user_id: int):
         res += str(index) + '. '
         res += queue['message'] + '\n'
         res += 'Название группы: ' + queue['group_name'] + '\n'
-        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'] - 3)).strftime('%Y-%m-%d %H:%M') #ЫЫЫ важна...может быть...
+        my_date = (queue['date'] + datetime.timedelta(hours=queue['timezone'] - 3)).strftime(
+            '%Y-%m-%d %H:%M')  #ЫЫЫ важна...может быть...
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return [queue['queue_id'] for queue in creator_queues], len(creator_queues), res, [queue['message'] for queue in creator_queues]
+    return [queue['queue_id'] for queue in creator_queues], len(creator_queues), res, [queue['message'] for queue in
+                                                                                       creator_queues]
 
 
 def get_queue_position(queue_id: int, tg_id: int):
@@ -94,17 +95,19 @@ def get_queue_position(queue_id: int, tg_id: int):
     # {'message': 'Lol', 'date': datetime.datetime, 'creator_id': 1242141, 'group_id': 12412421} [{'tg_id': 42646, 'full_name': 'Egor', 'vote_date': datetime.datetime} .......]
     queue_info = database.get_queue(queue_id)
     queue_info, users_info = queue_info
-    mas=[user_info['tg_id'] for user_info in users_info]
-    return 'Ваше место в очереди {}: {}'.format(queue_info['message'], mas.index(tg_id)+1)
+    mas = [user_info['tg_id'] for user_info in users_info]
+    return 'Ваше место в очереди {}: {}'.format(queue_info['message'], mas.index(tg_id) + 1)
+
 
 def get_queue_notif():
-    data=database.get_queue_notifications()
+    data = database.get_queue_notifications()
     for elem in data:
         elem['message'] = f"Напоминание!!!\nОчередь {elem['message']} будет создана через час"
     return data
 
+
 def already_queue():
-    queue_data=database.get_queue_ready()
+    queue_data = database.get_queue_ready()
     for elem in queue_data:
         elem['message'] = f"Очередь {elem['message']} была создана"
         elem['admin_message'] = f"{elem['message']} в группе {elem['group_name']}"
@@ -126,8 +129,10 @@ def update_queue_message_id(queue_id: int, queue_message_id: int):
 def delete_queue(queue_id: int):
     return database.delete_queue(queue_id)
 
-def rename_queue(queue_id : int, message: str):
+
+def rename_queue(queue_id: int, message: str):
     database.update_queue_name(queue_id, message)
+
 
 def delete_queue_member(queue_id: int, queue_position: str):
     _, users_info = database.get_queue(queue_id)

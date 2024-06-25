@@ -76,21 +76,21 @@ def get_queue_ready(cursor):
     
     cursor.execute("""SELECT queue.id, creator_id, queue.group_id, message, thread_id, group_name FROM queue 
                         JOIN groups ON queue.group_id = groups.id
-                        WHERE GREATEST(date - NOW(), NOW() - date) < interval '1 HOUR' AND is_notified = FALSE
+                        WHERE GREATEST(date - NOW(), NOW() - date) < interval '10 SECONDS' AND is_started = FALSE
                         ORDER BY date;""")
     queue_notifications = cursor.fetchall()
     for queue_notif in queue_notifications:
         cursor.execute("""UPDATE queue SET is_started = TRUE WHERE id = %s;""", (queue_notif[0],))
 
     return [{key: value for key, value in 
-                    zip(['queue_id', 'creator_id', 'thread_id', 'group_id', 'message', 'group_name'], notification)} 
+                    zip(['queue_id', 'creator_id', 'group_id', 'message', 'thread_id', 'group_name'], notification)}
                     for notification in queue_notifications]
 
 
 @database_func
 def get_message_id(cursor, queue_id: int):
     cursor.execute("""SELECT message_id FROM queue WHERE id = %s""", (queue_id,))
-    result = cursor.fetchone()
+    result = cursor.fetchone()[0]
 
     return result
 

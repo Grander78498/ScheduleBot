@@ -1,6 +1,6 @@
 import psycopg2
 import psycopg2.errorcodes
-from ..config import *
+from src.config import *
 
 
 def database_func(func):
@@ -14,7 +14,7 @@ def database_func(func):
             
             with connection.cursor() as cursor:
                 result = func(cursor, *arg)
-        except psycopg2.errors.lookup('23505') as _ex:
+        except psycopg2.errorcodes.lookup('23505') as _ex:
             raise _ex
         except Exception as _ex:
             print(f'We are fucked: {_ex}')
