@@ -4,7 +4,7 @@ import logging
 import datetime
 from src import logic
 from src import db
-from src.backend.queue_api import api
+from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
@@ -112,7 +112,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         for admin in chat_admins:
             userId = admin.user.id
             d.append(userId)
-        api.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
+        await api.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
         await message.answer(
             "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту")
     elif message.chat.type == "private":
