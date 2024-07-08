@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
+    'queue_api.apps.QueueApiConfig'
 ]
 
 MIDDLEWARE = [
