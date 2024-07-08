@@ -1,5 +1,5 @@
 from src import db
-from src import bot
+from src.frontend import bot
 import sys
 import asyncio
 
