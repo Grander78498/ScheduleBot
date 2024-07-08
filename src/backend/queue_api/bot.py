@@ -130,8 +130,8 @@ async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback,
 @dp.callback_query(F.data.in_(['add']))
 async def addNotification(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
-        group = logic.check_admin(call.message.chat.id)
-        if len(group) == 0:
+        groups = await api.check_admin(call.message.chat.id)
+        if len(groups) == 0:
             builder = InlineKeyboardBuilder()
             builder.button(text="Создать очередь", callback_data="add")
             builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -139,9 +139,9 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
             await call.message.answer("У тебя нет групп, где ты админ", reply_markup=builder.as_markup())
         else:
             builder = InlineKeyboardBuilder()
-            for gloss in group:
-                builder.button(text=gloss["group_name"],
-                               callback_data=GroupSelectCallback(groupID=gloss["group_tg_id"]))
+            for group in groups:
+                builder.button(text=group.name,
+                               callback_data=GroupSelectCallback(groupID=group.tg_id))
             builder.adjust(1)
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()

@@ -4,9 +4,8 @@ from django.db import models
 class TelegramUser(models.Model):
     tg_id = models.BigIntegerField(primary_key=True)
     full_name = models.CharField(max_length=128, null=True)
-    is_admin = models.BooleanField()
-    groups = models.ManyToManyField('TelegramGroup')
-    queue = models.ManyToManyField('Queue', through='QueueMember', null=True)
+    groups = models.ManyToManyField('TelegramGroup', through='GroupMember')
+    queue = models.ManyToManyField('Queue', through='QueueMember')
 
     def __str__(self):
         return str(self.tg_id)
@@ -19,6 +18,12 @@ class TelegramGroup(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class GroupMember(models.Model):
+    user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
+    groups = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
+    is_admin = models.BooleanField(default=False)
 
 
 class Queue(models.Model):
