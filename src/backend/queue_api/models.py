@@ -3,7 +3,7 @@ from django.db import models
 
 class TelegramUser(models.Model):
     tg_id = models.BigIntegerField(primary_key=True)
-    full_name = models.CharField(max_length=128)
+    full_name = models.CharField(max_length=128, null=True)
     is_admin = models.BooleanField()
     group = models.ManyToManyField('TelegramGroup')
     queue = models.ManyToManyField('Queue', through='QueueMember')
