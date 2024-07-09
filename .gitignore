@@ -6,3 +6,4 @@ venv
 .env
 backup.sql
 .idea
+celerybeat-schedule

@@ -314,7 +314,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         print(data)
     except Exception:
         print("Error")
-    thread_id, date = logic.add_queue(data)
+    thread_id, date = await api.add_queue(data)
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -413,12 +413,13 @@ async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
 
 async def queue_send(queue_id, thread_id, group_id, message):
     builder = InlineKeyboardBuilder()
-    delete_message_id = logic.get_message_id(queue_id)
-    await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
+    print('Queue!!!')
+    # delete_message_id = logic.get_message_id(queue_id)
+    # await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
     a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(),
                                message_thread_id=thread_id, parse_mode='html')
-    logic.update_queue_message_id(queue_id, a.message_id)
+    # logic.update_queue_message_id(queue_id, a.message_id)
 
 
 async def queue_notif_send(queue_id, thread_id, group_id, message):
@@ -426,15 +427,15 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
     logic.update_message_id(queue_id, a.message_id)
 
 
-async def scheduler():
-    while True:
-        already_queue = logic.already_queue()
-        hour_not = logic.get_queue_notif()
-        for i in already_queue:
-            await queue_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
-        for i in hour_not:
-            await queue_notif_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
-        await asyncio.sleep(20)
+# async def scheduler():
+#     while True:
+#         already_queue = logic.already_queue()
+#         hour_not = logic.get_queue_notif()
+#         for i in already_queue:
+#             await queue_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
+#         for i in hour_not:
+#             await queue_notif_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
+#         await asyncio.sleep(20)
 
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
@@ -457,7 +458,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    asyncio.create_task(scheduler())
+    # asyncio.create_task(scheduler())
     await dp.start_polling(bot)
 
 

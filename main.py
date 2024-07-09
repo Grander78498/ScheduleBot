@@ -1,6 +1,5 @@
 # from src import db
-from src.backend.queue_api import bot
-import os
+from queue_api import bot
 import asyncio
 
 if __name__ == '__main__':
