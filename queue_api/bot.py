@@ -413,7 +413,6 @@ async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
 
 async def queue_send(queue_id, thread_id, group_id, message):
     builder = InlineKeyboardBuilder()
-    print('Queue!!!')
     # delete_message_id = logic.get_message_id(queue_id)
     # await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
