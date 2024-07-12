@@ -149,7 +149,7 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    queueList, lenq, st, names = logic.get_creator_queues(call.from_user.id)
+    queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
     r = await call.message.answer(st)
     if lenq > 0:
         builder = InlineKeyboardBuilder()
@@ -184,7 +184,7 @@ async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
-    _, _, message = logic.print_queue(callback_data.queueID)
+    _, _, message = await api.print_queue(callback_data.queueID)
     await call.message.answer(text=message, parse_mode='html')
     await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
@@ -202,7 +202,7 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 
 @dp.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    group_id, message_id = logic.delete_queue(callback_data.queueID)
+    group_id, message_id = await api.delete_queue(callback_data.queueID)
     if message_id is not None:
         await bot.delete_message(chat_id=group_id, message_id=message_id)
     builder = InlineKeyboardBuilder()
@@ -342,7 +342,7 @@ async def echo(message: Message, state: FSMContext) -> None:
             await state.update_data(text=message.text)
             await state.set_state(States.year)
         if st == States.timezone:
-            if logic.check_timezone(message.text):
+            if api.check_timezone(message.text):
                 await message.answer("Часовой пояс сохранён, теперь введите время для напоминания в формате ЧЧ:ММ")
                 await state.update_data(timezone=message.text)
                 await state.set_state(States.hm)
@@ -350,7 +350,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await message.answer("Неправильно, попробуйте ещё раз")
         if st == States.hm:
             data = await state.get_data()
-            t = logic.check_time(message.text, data["year"], data["month"], data["day"])
+            t = api.check_time(message.text, data["year"], data["month"], data["day"])
             match t:
                 case "TimeError":
                     await message.answer("Неправильно, попробуйте ещё раз")
@@ -361,8 +361,8 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await putInDb(message, state)
         if st == States.renameQueue:
             data = await state.get_data()
-            logic.rename_queue(data["renameQueue"], message.text)
-            group_id, queue_message_id, queue = logic.print_queue(data["renameQueue"])
+            await api.rename_queue(data["renameQueue"], message.text)
+            group_id, queue_message_id, queue = await api.print_queue(data["renameQueue"])
             try:
                 builder = InlineKeyboardBuilder()
                 builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=data["renameQueue"]))
@@ -378,7 +378,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 
         if st == States.deleteQueueMember:
             data = await state.get_data()
-            result = logic.delete_queue_member(data['deleteQueueMember'], message.text)
+            result = await api.delete_queue_member(data['deleteQueueMember'], message.text)
             match result:
                 case "Incorrect":
                     await message.answer("Введён некорректный номер, попробуйте ещё раз")
@@ -386,7 +386,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await message.answer('Введённой позиции в очереди нет')
                 case _:
 
-                    group_id, queue_message_id, queue = logic.print_queue(data["deleteQueueMember"])
+                    group_id, queue_message_id, queue = await api.print_queue(data["deleteQueueMember"])
                     try:
                         builder = InlineKeyboardBuilder()
                         builder.button(text="Встать в очередь",
@@ -404,7 +404,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 
 @dp.callback_query(StopVoteCallback.filter(F.ID != 0))
 async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
-    st = logic.print_queue(callback_data.queueID)
+    st = await api.print_queue(callback_data.queueID)
     await bot.send_message(chat_id=callback_data.ID, text=st, message_thread_id=callback_data.thread_id,
                            parse_mode='html')
     await bot.delete_message(chat_id=callback_data.ID, message_id=callback_data.message_id)
@@ -413,17 +413,15 @@ async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
 
 async def queue_send(queue_id, thread_id, group_id, message):
     builder = InlineKeyboardBuilder()
-    # delete_message_id = logic.get_message_id(queue_id)
-    # await bot.delete_message(chat_id=group_id, message_id=delete_message_id)
+    queue_message_id = await api.get_message_id(queue_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-    a = await bot.send_message(chat_id=group_id, text=message, reply_markup=builder.as_markup(),
-                               message_thread_id=thread_id, parse_mode='html')
-    # logic.update_queue_message_id(queue_id, a.message_id)
+    await bot.edit_message_text(text=message, chat_id=group_id, message_id=queue_message_id,
+                                reply_markup=builder.as_markup(), parse_mode='html')
 
 
 async def queue_notif_send(queue_id, thread_id, group_id, message):
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
-    logic.update_message_id(queue_id, a.message_id)
+    await api.update_message_id(queue_id, a.message_id)
 
 
 # async def scheduler():
@@ -439,19 +437,15 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    try:
-        logic.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name,
-                                datetime.datetime.now())
-        group_id, queue_message_id, queue = logic.print_queue(callback_data.queueID)
+    is_not_queue_member = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
+    if not is_not_queue_member:
+        await call.answer("Вы уже добавлены в очередь")
+    else:
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
         await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
                                     reply_markup=builder.as_markup(), parse_mode='html')
-    except Exception:
-        await call.answer("Вы уже добавлены в очередь")
-    # mtext = logic.get_queue_position(callback_data.queueID, call.from_user.id)
-    # await bot.send_message(chat_id=call.from_user.id, text=mtext)
-    finally:
         await call.answer()
 
 
