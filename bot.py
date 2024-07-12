@@ -1,21 +1,16 @@
 import asyncio
-from multiprocessing import Process, Manager, Value
 import logging
 import datetime
-from src import logic
-from src import db
 from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import Filter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
 from aiogram.filters.callback_data import CallbackData
-from src.config import API_TOKEN
+from config import API_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -437,8 +432,8 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    is_not_queue_member = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
-    if not is_not_queue_member:
+    is_queue_member = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
+    if is_queue_member:
         await call.answer("Вы уже добавлены в очередь")
     else:
         group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)

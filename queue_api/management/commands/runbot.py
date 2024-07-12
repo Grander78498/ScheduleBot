@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 import asyncio
-from queue_api import bot
+import bot
 
 
 class Command(BaseCommand):

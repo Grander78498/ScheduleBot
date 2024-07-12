@@ -52,7 +52,7 @@ async def add_queue(data_dict):
             expires=queue.date + timedelta(seconds=10)
         )
     else:
-        from .bot import queue_send, queue_notif_send
+        from bot import queue_send, queue_notif_send
 
         if queue.date > timezone.now():
             await asyncio.sleep((queue.date - timezone.now()).seconds)
@@ -87,7 +87,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     user, _ = await TelegramUser.objects.aget_or_create(pk=tg_id)
     await TelegramUser.objects.filter(pk=tg_id).aupdate(full_name=full_name)
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
-    return created
+    return not created
 
 
 async def print_queue(queue_id: int):

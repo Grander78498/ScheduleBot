@@ -1,6 +1,6 @@
 from celery import shared_task
 from asgiref.sync import async_to_sync
-from .bot import queue_send
+from bot import queue_send
 from .models import *
 
 
