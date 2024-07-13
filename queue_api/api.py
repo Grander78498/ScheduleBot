@@ -93,11 +93,11 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
 async def print_queue(queue_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
     users = [user async for user in queue.telegramuser_set.all()]
-    res_string = f"Название очереди: <b>{queue.message}</b>\n"
-    res_string += "__________________________\n"
+    res_string = f"Название очереди: {queue.message}\n"
+    res_string += "\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\n"
     for index, user in enumerate(users, 1):
-        res_string += (str(index) + '. ')
-        res_string += f"{user.full_name} (`{user.tg_id}`)\n"
+        res_string += (str(index) + '\. ')
+        res_string += f"{user.full_name} \(`{user.tg_id}`\)\n"
     return queue.group_id, queue.message_id, res_string
 
 
