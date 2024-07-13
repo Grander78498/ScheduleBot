@@ -474,7 +474,18 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
 async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
-    await call.answer("ЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭЭ, куда вышел")
+    result = await api.delete_queue_member(callback_data.queueID, str(call.from_user.id))
+    if result == 'Incorrect':
+        await call.answer("Вы мертвы")
+    else:
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
+        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
+        builder.adjust(1)
+        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
+                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        await call.answer()
     # передаётся callback_data.queueID, call.from_user.id Это id очереди и id нажавшего
 
 async def main():
