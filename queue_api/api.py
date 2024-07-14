@@ -31,7 +31,7 @@ async def check_admin(admin_id: int):
 
 async def add_queue(data_dict):
     message = data_dict['text']
-    tz = '0' + str(int(data_dict['timezone']) + 3) + '00'
+    tz = str(int(data_dict['timezone']) + 3).rjust(2, '0') + '00'
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
     date = datetime.strptime(
@@ -54,8 +54,8 @@ async def add_queue(data_dict):
     else:
         from bot import queue_send, queue_notif_send
 
-        if queue.date > timezone.now():
-            await asyncio.sleep((queue.date - timezone.now()).seconds)
+        # if queue.date > timezone.now():
+        #     await asyncio.sleep((queue.date - timezone.now()).seconds)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
         await queue_send(queue.pk, group.thread_id, group.pk, queue.message)
 
@@ -139,7 +139,7 @@ async def get_creator_queues(user_id: int):
         res += queue.message + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         res += 'Название группы: ' + group.name + '\n'
-        my_date = (queue.date + timedelta(hours=queue.tz - 3)).strftime(
+        my_date = (queue.date + timedelta(hours=(queue.tz // 100) - 3)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
     return ([queue.pk for queue in creator_queues], len(creator_queues),
