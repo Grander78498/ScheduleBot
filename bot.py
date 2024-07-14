@@ -131,7 +131,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
 
 @dp.message(Command("change_tz"))
 async def cmd_change_tz(message: types.Message,  state: FSMContext):
-    await call.answer("Переезжай в Москву")
+    await message.answer("Переезжай в Москву")
 
 
 @dp.callback_query(F.data.in_(['swap']))
