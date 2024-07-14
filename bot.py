@@ -361,9 +361,10 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
-    await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
+    a = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
                            text="Очередь {} будет создана {}. За час до этого будет отправлено напоминание".format(
                                data['text'], date))
+    # await api.update_message_id(queue_id, a.message_id)
 
 
 @dp.message(F.text)
