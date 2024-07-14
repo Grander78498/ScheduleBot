@@ -144,3 +144,11 @@ async def get_creator_queues(user_id: int):
         res += 'Дата активации очереди: ' + my_date + '\n'
     return ([queue.pk for queue in creator_queues], len(creator_queues),
             res, [queue.message for queue in creator_queues])
+
+
+async def remove_first(queue_id: int):
+    queue = await Queue.objects.aget(pk=queue_id)
+    first_user = await queue.telegramuser_set.afirst()
+    count, _ = await first_user.adelete()
+    print(count)
+    return count != 0
