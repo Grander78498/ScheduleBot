@@ -139,7 +139,7 @@ async def get_creator_queues(user_id: int):
         res += queue.message + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         res += 'Название группы: ' + group.name + '\n'
-        my_date = (queue.date + timedelta(hours=(queue.tz // 100) - 3)).strftime(
+        my_date = (queue.date + timedelta(hours=queue.tz // 100)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
     return ([queue.pk for queue in creator_queues], len(creator_queues),
