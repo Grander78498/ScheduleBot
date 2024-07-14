@@ -96,8 +96,9 @@ async def print_queue(queue_id: int):
     res_string = f"Название очереди: {queue.message}\n"
     res_string += "\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\n"
     for index, user in enumerate(users, 1):
+        queue_member = await QueueMember.objects.aget(queue_id=queue.id, user_id=user.tg_id)
         res_string += (str(index) + '\. ')
-        res_string += f"{user.full_name} \(`{user.tg_id}`\)\n"
+        res_string += f"{user.full_name} \(`{queue_member.pk}`\)\n"
     return queue.group_id, queue.message_id, res_string
 
 
@@ -116,9 +117,18 @@ async def delete_queue(queue_id: int):
     return group_id, message_id
 
 
-async def delete_queue_member(queue_id: int, tg_id: str):
+async def delete_queue_member(queue_member_id: str):
     try:
-        queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=int(tg_id))
+        queue_member = await QueueMember.objects.aget(pk=int(queue_member_id))
+        await queue_member.adelete()
+        return 'Correct'
+    except Exception:
+        return 'Incorrect'
+
+
+async def delete_queue_member_by_id(queue_id: int, tg_id: int):
+    try:
+        queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
         await queue_member.adelete()
         return 'Correct'
     except Exception:
@@ -139,7 +149,7 @@ async def get_creator_queues(user_id: int):
         res += queue.message + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         res += 'Название группы: ' + group.name + '\n'
-        my_date = (queue.date + timedelta(hours=(queue.tz // 100) - 3)).strftime(
+        my_date = (queue.date + timedelta(hours=queue.tz // 100)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
     return ([queue.pk for queue in creator_queues], len(creator_queues),
