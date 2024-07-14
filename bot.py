@@ -98,6 +98,7 @@ class QueueSelectCallback(CallbackData, prefix="queueSelect"):
 
 class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
     queueID: int
+    messageID : int
 
 
 class DeleteQueueMemberCallback(CallbackData, prefix="DeleteQueueMember"):
@@ -192,7 +193,7 @@ async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
     builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID))
     builder.button(text="Удалить участника очереди",
                    callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID))
-    builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=callback_data.queueID))
+    builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=callback_data.queueID, messageID=call.message.message_id))
     builder.button(text="Удалить первого из очереди", callback_data=DeleteFirstQueueCallback(queueID=callback_data.queueID))
     builder.button(text="\u25C0", callback_data=ReturnToQueueList(messageID=call.message.message_id))
     builder.adjust(2)
@@ -246,6 +247,7 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
     group_id, message_id = await api.delete_queue(callback_data.queueID)
     if message_id is not None:
         await bot.delete_message(chat_id=group_id, message_id=message_id)
+        await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
