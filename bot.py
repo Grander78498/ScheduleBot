@@ -73,6 +73,10 @@ class StopVoteCallback(CallbackData, prefix="stop"):
     thread_id: int | None
 
 
+class DeleteFirstQueueCallback(CallbackData, prefix="delete_first"):
+    queueID: int
+
+
 class GroupSelectCallback(CallbackData, prefix="selectGroup"):
     groupID: int
 
@@ -185,8 +189,9 @@ async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
     builder.button(text="Удалить участника очереди",
                    callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID))
     builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=callback_data.queueID))
+    builder.button(text="Удалить первого из очереди", callback_data=DeleteFirstQueueCallback(queueID=callback_data.queueID))
     builder.button(text="\u25C0", callback_data=ReturnToQueueList(messageID=call.message.message_id))
-    builder.adjust(1)
+    builder.adjust(2)
     await bot.edit_message_text(text="Выбрана очередь {}".format(callback_data.queueName), chat_id=call.message.chat.id,
                                 message_id=callback_data.delete_message_id)
     await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.delete_message_id,
@@ -195,6 +200,23 @@ async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
     # Удалить очередь, удалить участника, изменить название, кнопка назад
 
     await call.answer()
+
+
+@dp.callback_query(DeleteFirstQueueCallback.filter(F.queueID != 0))
+async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallback):
+    res = await api.remove_first(callback_data.queueID)
+    if not res:
+        await call.answer("Данная очередь пуста")
+    else:
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
+        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
+        builder.adjust(1)
+        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
+                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        await call.answer()
+
 
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))

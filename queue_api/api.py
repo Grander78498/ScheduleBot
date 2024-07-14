@@ -147,8 +147,10 @@ async def get_creator_queues(user_id: int):
 
 
 async def remove_first(queue_id: int):
-    queue = await Queue.objects.aget(pk=queue_id)
-    first_user = await queue.telegramuser_set.afirst()
-    count, _ = await first_user.adelete()
-    print(count)
-    return count != 0
+    try:
+        queue = await Queue.objects.aget(pk=queue_id)
+        first_user = await queue.queuemember_set.afirst()
+        await first_user.adelete()
+        return True
+    except Exception:
+        return False
