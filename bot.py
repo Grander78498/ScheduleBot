@@ -47,7 +47,6 @@ class States(StatesGroup):
     year = State()
     month = State()
     day = State()
-    timezone = State()
     hm = State()
 
 
@@ -125,9 +124,18 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             d.append(userId)
         await api.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту")
+            "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу. Для его замены наберите команду /change_tz")
     elif message.chat.type == "private":
         await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+
+
+
+
+@dp.callback_query(F.data.in_(['swap']))
+@dp.callback_query(F.data.in_(['show_swaps']))
+async def swap(call: CallbackQuery, state: FSMContext):
+    await call.answer("Функционал пока не работает")
+
 
 
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
@@ -266,7 +274,7 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
 async def Day(call: CallbackQuery, callback_data: DayCallback, state: FSMContext):
     if call.message.chat.type == "private":
         await state.update_data(day=callback_data.day)
-        await state.set_state(States.timezone)
+        await state.set_state(States.hm)
         await call.message.answer("Введите разницу времени с Москвой")
         await call.answer()
 
@@ -392,13 +400,6 @@ async def echo(message: Message, state: FSMContext) -> None:
             await message.answer("Текст сообщения получен, выберите год", reply_markup=builder.as_markup())
             await state.update_data(text=message.text)
             await state.set_state(States.year)
-        if st == States.timezone:
-            if api.check_timezone(message.text):
-                await message.answer("Часовой пояс сохранён, теперь введите время для напоминания в формате ЧЧ:ММ")
-                await state.update_data(timezone=message.text)
-                await state.set_state(States.hm)
-            else:
-                await message.answer("Неправильно, попробуйте ещё раз")
         if st == States.hm:
             data = await state.get_data()
             t = api.check_time(message.text, data["year"], data["month"], data["day"])
