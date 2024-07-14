@@ -40,7 +40,7 @@ async def add_queue(data_dict):
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    queue = await Queue.objects.acreate(message=message, date=date, tz=tz, creator=creator, group=group)
+    queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
 
     if not settings.DEBUG:
         clocked, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
