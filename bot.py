@@ -423,7 +423,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 
         if st == States.deleteQueueMember:
             data = await state.get_data()
-            result = await api.delete_queue_member(data['deleteQueueMember'], message.text)
+            result = await api.delete_queue_member(message.text)
             match result:
                 case "Incorrect":
                     await message.answer("Введён некорректный номер, попробуйте ещё раз")
@@ -502,7 +502,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
 async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
-    result = await api.delete_queue_member(callback_data.queueID, str(call.from_user.id))
+    result = await api.delete_queue_member_by_id(callback_data.queueID, call.from_user.id)
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
     else:
