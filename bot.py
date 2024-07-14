@@ -2,6 +2,7 @@ import asyncio
 import logging
 import datetime
 from queue_api import api
+import aiogram
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
@@ -174,6 +175,9 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 async def printQueue_returned(call: CallbackQuery, callback_data : ReturnToQueueList, state: FSMContext):
     queueList,lenq,st, names = await api.get_creator_queues(call.from_user.id)
     r = await bot.edit_message_text(text=st, chat_id=call.message.chat.id, message_id=callback_data.messageID)
+    uilder = InlineKeyboardBuilder()
+    await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
+                                        reply_markup=uilder.as_markup())
     if lenq>0:
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
