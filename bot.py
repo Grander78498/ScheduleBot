@@ -275,7 +275,7 @@ async def Day(call: CallbackQuery, callback_data: DayCallback, state: FSMContext
     if call.message.chat.type == "private":
         await state.update_data(day=callback_data.day)
         await state.set_state(States.hm)
-        await call.message.answer("Введите разницу времени с Москвой")
+        await call.message.answer("Введите время в формате ЧЧ:ММ")
         await call.answer()
 
 
