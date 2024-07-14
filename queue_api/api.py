@@ -31,13 +31,14 @@ async def check_admin(admin_id: int):
 
 async def add_queue(data_dict):
     message = data_dict['text']
-    tz = str(int(data_dict['timezone']) + 3).rjust(2, '0') + '00'
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
+    creator = await TelegramUser.objects.aget(pk=creator_id)
+    tz = creator.tz
+    tz = str(tz).rjust(2, '0') + '00'
     date = datetime.strptime(
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
-    creator = await TelegramUser.objects.aget(pk=creator_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     queue = await Queue.objects.acreate(message=message, date=date, tz=tz, creator=creator, group=group)
 
@@ -148,8 +149,9 @@ async def get_creator_queues(user_id: int):
         res += str(index) + '. '
         res += queue.message + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
+        user = await TelegramUser.objects.aget(pk=user_id)
         res += 'Название группы: ' + group.name + '\n'
-        my_date = (queue.date + timedelta(hours=queue.tz // 100)).strftime(
+        my_date = (queue.date + timedelta(hours=user.tz)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
     return ([queue.pk for queue in creator_queues], len(creator_queues),

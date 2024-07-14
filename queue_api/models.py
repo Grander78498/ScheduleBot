@@ -6,6 +6,8 @@ class TelegramUser(models.Model):
     full_name = models.CharField(max_length=128, null=True)
     groups = models.ManyToManyField('TelegramGroup', through='GroupMember')
     queue = models.ManyToManyField('Queue', through='QueueMember')
+    tz = models.IntegerField(default=3)
+
 
     def __str__(self):
         return str(self.tg_id)
@@ -29,7 +31,6 @@ class GroupMember(models.Model):
 class Queue(models.Model):
     message = models.CharField(max_length=64)
     date = models.DateTimeField()
-    tz = models.IntegerField()
     creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, related_name='creator')
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
     message_id = models.BigIntegerField(null=True)
