@@ -387,22 +387,73 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                data['text'], date))
 
 
+
+
+
+@dp.callback_query(F.data.in_(['custom']))
+async def custom_time(call: CallbackQuery, state: FSMContext):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="{}".format(datetime.datetime.now().year),
+                   callback_data=YearCallback(year=datetime.datetime.now().year))
+    builder.button(text="{}".format(datetime.datetime.now().year + 1),
+                   callback_data=YearCallback(year=datetime.datetime.now().year + 1))
+    builder.button(text="{}".format(datetime.datetime.now().year + 2),
+                   callback_data=YearCallback(year=datetime.datetime.now().year + 2))
+    builder.adjust(1)
+    await message.answer("Выберите год", reply_markup=builder.as_markup())
+    await state.set_state(States.year)
+
+
+@dp.callback_query(F.data.in_(['now']))
+async def now_time(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.update_data(hm="{:02d}:{:02d}".format(now.hour, now.minute))
+    await putInDb(call.message, state)
+    await call.answer()
+
+
+
+@dp.callback_query(F.data.in_(['one_hour']))
+async def next_hour(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()+datetime.timedelta(hours=1)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.update_data(hm="{:02d}:{:02d}".format(now.hour, now.minute))
+    await putInDb(call.message, state)
+    await call.answer()
+
+
+@dp.callback_query(F.data.in_(['tomorrow']))
+async def tomorrow(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()+datetime.timedelta(days=1)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
+
+async def short_cut(message: Message, state: FSMContext):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Сейчас",callback_data="now")
+    builder.button(text="Через час",callback_data="one_hour")
+    builder.button(text="Завтра",callback_data="tomorrow")
+    builder.button(text="Задать самостоятельно",callback_data="custom")
+    builder.adjust(2)
+    await message.answer("Выберите время", reply_markup=builder.as_markup())
+
+
 @dp.message(F.text)
 async def echo(message: Message, state: FSMContext) -> None:
     st = await state.get_state()
     if message.chat.type == "private":
         if st == States.text:
-            builder = InlineKeyboardBuilder()
-            builder.button(text="{}".format(datetime.datetime.now().year),
-                           callback_data=YearCallback(year=datetime.datetime.now().year))
-            builder.button(text="{}".format(datetime.datetime.now().year + 1),
-                           callback_data=YearCallback(year=datetime.datetime.now().year + 1))
-            builder.button(text="{}".format(datetime.datetime.now().year + 2),
-                           callback_data=YearCallback(year=datetime.datetime.now().year + 2))
-            builder.adjust(1)
-            await message.answer("Текст сообщения получен, выберите год", reply_markup=builder.as_markup())
             await state.update_data(text=message.text)
-            await state.set_state(States.year)
+            await short_cut(message, state)
         if st == States.hm:
             data = await state.get_data()
             t = api.check_time(message.text, data["year"], data["month"], data["day"])
