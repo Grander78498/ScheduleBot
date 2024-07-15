@@ -140,7 +140,6 @@ async def swap(call: CallbackQuery, state: FSMContext):
     await call.answer("Функционал пока не работает")
 
 
-
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
 async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback, state: FSMContext):
     await state.update_data(group_id=callback_data.groupID)
@@ -580,7 +579,7 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
         builder.adjust(1)
         await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
                                     reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        await call.answer()
+        await call.answer(url="https://t.me/DLVScheduleBot?start=1")
     # передаётся callback_data.queueID, call.from_user.id Это id очереди и id нажавшего
 
 async def main():
