@@ -85,10 +85,13 @@ def check_timezone(tz):
 
 async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     queue = await Queue.objects.aget(pk=queue_id)
-    user, _ = await TelegramUser.objects.aget_or_create(pk=tg_id)
+    try:
+        user, _ = await TelegramUser.objects.aget(pk=tg_id)
+    except Exception:
+        return {"started": False}
     await TelegramUser.objects.filter(pk=tg_id).aupdate(full_name=full_name)
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
-    return not created
+    return {"started": True, "queue_member": not created}
 
 
 async def print_queue(queue_id: int):
@@ -166,3 +169,7 @@ async def remove_first(queue_id: int):
         return True
     except Exception:
         return False
+
+
+async def save_user(tg_id: int, full_name: str):
+    await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
