@@ -137,7 +137,8 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
 @dp.callback_query(F.data.in_(['swap']))
 @dp.callback_query(F.data.in_(['show_swaps']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    await call.answer("Функционал пока не работает")
+#    await call.answer("Функционал пока не работает")
+    await call.
 
 
 
