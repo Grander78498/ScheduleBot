@@ -113,6 +113,17 @@ class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
     queueID: int
 
 
+class SwapCallback(CallbackData, prefix="swap"):
+    message_type: str
+    first_user_id: int
+    first_tg_user_id: int
+    queueId: int
+    second_user_id: int
+    message_id: int
+
+
+
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if len(str(message.text).split())>1:
@@ -164,14 +175,40 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
 async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
     queueID = (await state.get_data())["swap"]
     result = await api.get_user_id(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
-    await message.answer(result["message"])
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Отклонить", callback_data="1")
-    builder.button(text="Принять", callback_data="2")
-    await bot.send_message(chat_id=result["user_id"], 
-                           text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']),
-                           reply_markup=builder.as_markup())
+    if result["status"]!="OK":
+        await message.answer(result["message"])
+    else:
+        await message.answer(result["message"])
+        mes = await bot.send_message(chat_id=result["user_id"], 
+                               text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
+        builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
+        await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
+                                            reply_markup=builder.as_markup())
     
+
+
+@dp.callback_query(SwapCallback.filter(F.queueId != 0))
+async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: FSMContext):
+    if callback_data.message_type=="Deny":
+        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был отклонён")
+    else:
+        await api.swap_places(callback_data.first_user_id, callback_data.second_user_id)
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueId, False)
+        try:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="Встать в очередь",
+                           callback_data=QueueIDCallback(queueID=callback_data.queueId))
+            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueId))
+            builder.adjust(1)
+            await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
+                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        except Exception as _ex:
+            print(_ex)
+    await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
+    await call.answer()
+
 
 
 @dp.callback_query(F.data.in_(['swap']))
@@ -520,7 +557,6 @@ async def echo(message: Message, state: FSMContext) -> None:
             await state.update_data(text=message.text)
             await short_cut(message, state)
         if st == States.swap:
-            await message.answer("Запрос был отправлен, ожидайте ответа")
             await send_swap_request(message, message.text, message.chat.id, state)
         if st == States.hm:
             data = await state.get_data()
