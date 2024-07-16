@@ -14,10 +14,10 @@ import json
 import re
 
 
-async def add_admin(group_id: int, admins: list[int], group_name: str, thread_id: int):
+async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
     group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
-    for admin in admins:
-        user, _ = await TelegramUser.objects.aget_or_create(tg_id=admin)
+    for admin, name in zip(admins, names):
+        user, _ = await TelegramUser.objects.aget_or_create(tg_id=admin, full_name=name)
         await user.groups.aadd(group, through_defaults={"is_admin": True})
         await user.asave()
 
@@ -87,7 +87,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
     user = await TelegramUser.objects.aget(pk=tg_id)
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
-    return {"started": True, "queue_member": not created}
+    return {"started": user.is_started, "queue_member": not created}
 
 
 async def print_queue(queue_id: int):
@@ -111,8 +111,8 @@ async def get_message_id(queue_id: int):
 
 
 async def get_queue_link(queue_id: int):
-    queue = Queue.objects.aget(pk=queue_id)
-    link = f"https://t.me/c/{abs(queue.group_id)}/{queue.message_id}"
+    queue = await Queue.objects.aget(pk=queue_id)
+    link = f"https://t.me/c/{int(str(queue.group_id)[4:])}/{queue.message_id}"
     return link
 
 
@@ -174,4 +174,6 @@ async def remove_first(queue_id: int):
 
 
 async def save_user(tg_id: int, full_name: str):
-    await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name, is_started=True)
+    user, created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    user.is_started = True
+    await user.asave()

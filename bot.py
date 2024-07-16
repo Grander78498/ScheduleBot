@@ -113,8 +113,22 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if len(str(message.text).split())>1:
         queueID=int(str(message.text).split()[1])
         await api.save_user(message.chat.id, message.from_user.full_name)
-        _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
-        await message.answer("Тебя добавили в очередь")
+        _,_ = await api.add_user_to_queue(queueID, message.chat.id)
+        group_id, queue_message_id, queue = await api.print_queue(queueID)
+        try:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="Встать в очередь",
+                               callback_data=QueueIDCallback(queueID=queueID))
+            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queueID))
+            builder.adjust(1)
+            await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
+                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        except Exception as _ex:
+            print(_ex)
+        link = await api.get_queue_link(queueID)
+        return_builder = InlineKeyboardBuilder()
+        return_builder.button(text="Вернуться в группу", url=link)
+        await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -124,13 +138,17 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if message.chat.type == "group" or message.chat.type == "supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
+        names = []
         for admin in chat_admins:
             userId = admin.user.id
+            name = admin.user.full_name
             d.append(userId)
-        await api.add_admin(message.chat.id, d, message.chat.title, message.message_thread_id)
+            names.append(name)
+        await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
             "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу. Для его замены наберите команду /change_tz")
     elif message.chat.type == "private":
+        await api.save_user(message.chat.id, message.from_user.full_name)
         await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
 
@@ -376,7 +394,6 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         if "renameQueue" in data:
             del data["renameQueue"]
         data["creator_id"] = message.chat.id
-        print(data)
     except Exception:
         print("Error")
     thread_id, date = await api.add_queue(data)
@@ -405,7 +422,7 @@ async def custom_time(call: CallbackQuery, state: FSMContext):
     builder.button(text="{}".format(datetime.datetime.now().year + 2),
                    callback_data=YearCallback(year=datetime.datetime.now().year + 2))
     builder.adjust(1)
-    await message.answer("Выберите год", reply_markup=builder.as_markup())
+    await call.message.answer("Выберите год", reply_markup=builder.as_markup())
     await state.set_state(States.year)
 
 
@@ -558,9 +575,8 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
+    client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id)
     is_started = client["started"]
-    print(is_started)
     if is_started:
         is_queue_member = client["queue_member"]
         if is_queue_member:
