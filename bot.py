@@ -133,7 +133,6 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-    builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
     builder.adjust(1)
     if message.chat.type == "group" or message.chat.type == "supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
@@ -158,10 +157,9 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
 
 
 @dp.callback_query(F.data.in_(['swap']))
-@dp.callback_query(F.data.in_(['show_swaps']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    await call.answer("Функционал пока не работает")
-#    await call.answer(url="https://t.me/DLVScheduleBot?start=1")
+    await call.answer("Функционал в разработке")
+
 
 
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
@@ -181,7 +179,6 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
             builder.button(text="Создать очередь", callback_data="add")
             builder.button(text="Вывести существующие очереди", callback_data="print")
             builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-            builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
             builder.adjust(1)
             await call.message.answer("У тебя нет групп, где ты админ", reply_markup=builder.as_markup())
         else:
@@ -197,8 +194,10 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.in_(['print']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
-    r = await call.message.answer(st)
+    if lenq==0:
+        await call.message.answer(st)
     if lenq > 0:
+        r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
@@ -214,9 +213,10 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 async def printQueue_returned(call: CallbackQuery, callback_data : ReturnToQueueList, state: FSMContext):
     queueList,lenq,st, names = await api.get_creator_queues(call.from_user.id)
     r = await bot.edit_message_text(text=st, chat_id=call.message.chat.id, message_id=callback_data.messageID)
-    uilder = InlineKeyboardBuilder()
-    await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
-                                        reply_markup=uilder.as_markup())
+    if lenq==0:
+        uilder = InlineKeyboardBuilder()
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
+                                            reply_markup=uilder.as_markup())
     if lenq>0:
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
@@ -290,7 +290,6 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-    builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
     builder.adjust(1)
     await call.message.answer("Очередь удалена", reply_markup=builder.as_markup())
     await call.answer()
@@ -401,7 +400,6 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-    builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
     await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
@@ -504,7 +502,6 @@ async def echo(message: Message, state: FSMContext) -> None:
             builder.button(text="Создать очередь", callback_data="add")
             builder.button(text="Вывести существующие очереди", callback_data="print")
             builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-            builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
             builder.adjust(1)
             await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
 
@@ -533,7 +530,6 @@ async def echo(message: Message, state: FSMContext) -> None:
                     builder.button(text="Создать очередь", callback_data="add")
                     builder.button(text="Вывести существующие очереди", callback_data="print")
                     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-                    builder.button(text="Посмотреть входящие запросы на перемещение", callback_data="show_swaps")
                     builder.adjust(1)
                     await message.answer("Участник был успешно удалён", reply_markup=builder.as_markup())
 
