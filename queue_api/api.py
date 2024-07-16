@@ -90,7 +90,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int):
     return {"started": user.is_started, "queue_member": not created}
 
 
-async def print_queue(queue_id: int):
+async def print_queue(queue_id: int, private: bool):
     queue = await Queue.objects.aget(pk=queue_id)
     members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.message}\n"
@@ -98,7 +98,10 @@ async def print_queue(queue_id: int):
     for index, member in enumerate(members, 1):
         user = await TelegramUser.objects.aget(pk=member.user_id)
         res_string += (str(index) + '\. ')
-        res_string += f"{user.full_name} \(`{member.pk}`\)\n"
+        res_string += f"{user.full_name}"
+        if private:
+            res_string += f"\(`{member.pk}`\)"
+        res_string += "\n"
     return queue.group_id, queue.message_id, res_string
 
 
@@ -145,12 +148,11 @@ async def rename_queue(queue_id: int, message: str):
     await Queue.objects.filter(pk=queue_id).aupdate(message=message)
 
 
-async def get_creator_queues(user_id: int):
-    creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id)]
-    if len(creator_queues) == 0 or creator_queues[0].pk is None:
+async def print_all_queues(user_id: int, queue_list: list[Queue]):
+    if len(queue_list) == 0 or queue_list[0].pk is None:
         return [], 0, 'У вас нет созданных очередей(', []
     res = 'Ваши очереди:\n'
-    for index, queue in enumerate(creator_queues, 1):
+    for index, queue in enumerate(queue_list, 1):
         res += str(index) + '. '
         res += queue.message + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
@@ -159,9 +161,19 @@ async def get_creator_queues(user_id: int):
         my_date = (queue.date + timedelta(hours=user.tz)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return ([queue.pk for queue in creator_queues], len(creator_queues),
-            res, [queue.message for queue in creator_queues])
+    return ([queue.pk for queue in queue_list], len(queue_list),
+            res, [queue.message for queue in queue_list])
 
+
+async def get_creator_queues(user_id: int):
+    creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id)]
+    return await print_all_queues(user_id, creator_queues)
+
+
+async def get_user_queues(tg_id: int):
+    user = await TelegramUser.objects.aget(pk=tg_id)
+    user_queues = [queue async for queue in user.queue.all()]
+    return await print_all_queues(tg_id, user_queues)
 
 async def remove_first(queue_id: int):
     try:
