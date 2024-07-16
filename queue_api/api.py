@@ -174,4 +174,8 @@ async def remove_first(queue_id: int):
 
 
 async def save_user(tg_id: int, full_name: str):
+<<<<<<< HEAD
     await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name, is_started=True)
+=======
+    await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+>>>>>>> 773c012207d0d0223fa7c75be1e65d6c6eee0f59

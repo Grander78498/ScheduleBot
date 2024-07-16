@@ -110,6 +110,11 @@ class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
+    if len(str(message.text).split())>1:
+        queueID=int(str(message.text).split()[1])
+        await api.save_user(message.chat.id, message.from_user.full_name)
+        _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
+        await message.answer("Тебя добавили в очередь")
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -138,6 +143,7 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
 @dp.callback_query(F.data.in_(['show_swaps']))
 async def swap(call: CallbackQuery, state: FSMContext):
     await call.answer("Функционал пока не работает")
+#    await call.answer(url="https://t.me/DLVScheduleBot?start=1")
 
 
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
@@ -552,18 +558,24 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    is_queue_member = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
-    if is_queue_member:
-        await call.answer("Вы уже добавлены в очередь")
+    client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
+    is_started = client["started"]
+    print(is_started)
+    if is_started:
+        is_queue_member = client["queue_member"]
+        if is_queue_member:
+            await call.answer("Вы уже добавлены в очередь")
+        else:
+            group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+            builder = InlineKeyboardBuilder()
+            builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
+            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
+            builder.adjust(1)
+            await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
+                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+            await call.answer()
     else:
-        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
-        builder = InlineKeyboardBuilder()
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
-        builder.adjust(1)
-        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        await call.answer()
+        await call.answer(url="https://t.me/DLVScheduleBot?start={}".format(callback_data.queueID))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
@@ -579,7 +591,6 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
         builder.adjust(1)
         await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
                                     reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        await call.answer(url="https://t.me/DLVScheduleBot?start=1")
     # передаётся callback_data.queueID, call.from_user.id Это id очереди и id нажавшего
 
 async def main():
