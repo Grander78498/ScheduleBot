@@ -169,7 +169,7 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
     builder.button(text="Отклонить", callback_data="1")
     builder.button(text="Принять", callback_data="2")
     await bot.send_message(chat_id=result["user_id"], 
-                           text="Вам от {} на месте {} был отправлен запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(from_user_id, 2, queueID, 1),
+                           text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']),
                            reply_markup=builder.as_markup())
     
 
@@ -202,6 +202,7 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
     await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
     await state.set_state(States.swap)
     await state.update_data(swap=callback_data.queueID)
+    await call.answer()
 
 
 

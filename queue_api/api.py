@@ -9,6 +9,7 @@ from .models import *
 from datetime import datetime, timedelta
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from django.conf import settings
+from asgiref.sync import sync_to_async
 from django.utils import timezone
 import json
 import re
@@ -209,8 +210,19 @@ async def get_user_id(first_member_id: int, second_member_id: str):
 
     if second_member_id not in [member.pk async for member in queue.queuemember_set.all()]:
         return {'status': 'Wrong queue', 'message': 'Хули ты в неправильную очередь лезешь уёбок????????'}
+    if second_member_id == first_member_id:
+        return {'status': 'Self chosen', 'message': 'Самолайк == самоотсос'}
     second = await QueueMember.objects.aget(pk=second_member_id)
-    return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ай молодца, сосни-ка хуйца'}
+    return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ай молодца, сосни-ка хуйца',
+            'first_name': (await TelegramUser.objects.aget(pk=first.user_id)).full_name, 'queue_name': queue.message,
+            'first_position': await get_queue_position(first.pk), 'second_position': await get_queue_position(second.pk)}
+
+
+async def get_queue_position(member_id: int):
+    member = await QueueMember.objects.aget(pk=member_id)
+    queue = await Queue.objects.aget(pk=member.queue_id)
+    member_list = [mb async for mb in queue.queuemember_set.all()]
+    return member_list.index(member) + 1
 
 
 async def swap_places(first_member_id: int, second_member_id: int):
