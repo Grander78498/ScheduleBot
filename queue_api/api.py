@@ -86,8 +86,9 @@ def check_timezone(tz):
 async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     queue = await Queue.objects.aget(pk=queue_id)
     try:
-        user, _ = await TelegramUser.objects.aget(pk=tg_id)
-    except Exception:
+        user = await TelegramUser.objects.aget(pk=tg_id)
+    except Exception as e:
+        print(str(e), "qqqqqqqqqqqqqqq")
         return {"started": False}
     await TelegramUser.objects.filter(pk=tg_id).aupdate(full_name=full_name)
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
