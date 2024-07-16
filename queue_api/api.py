@@ -148,9 +148,12 @@ async def rename_queue(queue_id: int, message: str):
     await Queue.objects.filter(pk=queue_id).aupdate(message=message)
 
 
-async def print_all_queues(user_id: int, queue_list: list[Queue]):
+async def print_all_queues(user_id: int, queue_list: list[Queue], is_admin: bool):
     if len(queue_list) == 0 or queue_list[0].pk is None:
-        return [], 0, 'У вас нет созданных очередей(', []
+        if is_admin:
+            return [], 0, 'у вас нет созданных очередей(', []
+        else:
+            return [], 0, 'у вас нет  очередей в которых вы состоите(', []
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(queue_list, 1):
         res += str(index) + '. '
@@ -167,13 +170,13 @@ async def print_all_queues(user_id: int, queue_list: list[Queue]):
 
 async def get_creator_queues(user_id: int):
     creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id)]
-    return await print_all_queues(user_id, creator_queues)
+    return await print_all_queues(user_id, creator_queues, True)
 
 
 async def get_user_queues(tg_id: int):
     user = await TelegramUser.objects.aget(pk=tg_id)
     user_queues = [queue async for queue in user.queue.all()]
-    return await print_all_queues(tg_id, user_queues)
+    return await print_all_queues(tg_id, user_queues, False)
 
 async def remove_first(queue_id: int):
     try:

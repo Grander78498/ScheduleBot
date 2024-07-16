@@ -48,6 +48,7 @@ class States(StatesGroup):
     month = State()
     day = State()
     hm = State()
+    swap = State()
 
 
 
@@ -94,6 +95,10 @@ class QueueSelectCallback(CallbackData, prefix="queueSelect"):
     delete_message_id: int
     queueName: str
 
+class QueueSelectForSwapCallback(CallbackData, prefix="SwapqueueSelect"):
+    queueID: int
+    queueName: str
+
 
 class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
     queueID: int
@@ -114,7 +119,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         queueID=int(str(message.text).split()[1])
         await api.save_user(message.chat.id, message.from_user.full_name)
         _,_ = await api.add_user_to_queue(queueID, message.chat.id)
-        group_id, queue_message_id, queue = await api.print_queue(queueID)
+        group_id, queue_message_id, queue = await api.print_queue(queueID, False)
         try:
             builder = InlineKeyboardBuilder()
             builder.button(text="Встать в очередь",
@@ -156,9 +161,48 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
     await message.answer("Переезжай в Москву")
 
 
+async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
+    queueID = (await state.get_data())["swap"]
+    result = await api.get_user_id(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
+    await message.answer(result["message"])
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Отклонить", callback_data="1")
+    builder.button(text="Принять", callback_data="2")
+    await bot.send_message(chat_id=result["user_id"], 
+                           text="Вам от {} на месте {} был отправлен запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(from_user_id, 2, queueID, 1),
+                           reply_markup=builder.as_markup())
+    
+
+
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
     await call.answer("Функционал в разработке")
+    queueList, lenq, st, names = await api.get_user_queues(call.from_user.id)
+    if lenq==0:
+        await call.message.answer(st)
+    if lenq > 0:
+        r = await call.message.answer(st)
+        builder = InlineKeyboardBuilder()
+        for i in range(lenq):
+            builder.button(text="{}".format(i + 1),
+                           callback_data=QueueSelectForSwapCallback(queueID=queueList[i],
+                                                             queueName=names[i]))
+        builder.adjust(4)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+                                            reply_markup=builder.as_markup())
+    await call.answer()
+
+
+
+
+@dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
+async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
+    _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
+    await call.message.answer(text, parse_mode="MarkdownV2")
+    await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
+    await state.set_state(States.swap)
+    await state.update_data(swap=callback_data.queueID)
+
 
 
 
@@ -251,7 +295,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
     if not res:
         await call.answer("Данная очередь пуста")
     else:
-        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
@@ -264,7 +308,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
-    _, _, message = await api.print_queue(callback_data.queueID)
+    _, _, message = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
     await call.message.answer(text=message, parse_mode='MarkdownV2')
     await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
@@ -474,6 +518,9 @@ async def echo(message: Message, state: FSMContext) -> None:
         if st == States.text:
             await state.update_data(text=message.text)
             await short_cut(message, state)
+        if st == States.swap:
+            await message.answer("Запрос был отправлен, ожидайте ответа")
+            await send_swap_request(message, message.text, message.chat.id, state)
         if st == States.hm:
             data = await state.get_data()
             t = api.check_time(message.text, data["year"], data["month"], data["day"])
@@ -488,7 +535,7 @@ async def echo(message: Message, state: FSMContext) -> None:
         if st == States.renameQueue:
             data = await state.get_data()
             await api.rename_queue(data["renameQueue"], message.text)
-            group_id, queue_message_id, queue = await api.print_queue(data["renameQueue"])
+            group_id, queue_message_id, queue = await api.print_queue(data["renameQueue"], message.chat.type == "private")
             try:
                 builder = InlineKeyboardBuilder()
                 builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=data["renameQueue"]))
@@ -515,7 +562,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await message.answer('Введённой позиции в очереди нет')
                 case _:
 
-                    group_id, queue_message_id, queue = await api.print_queue(data["deleteQueueMember"])
+                    group_id, queue_message_id, queue = await api.print_queue(data["deleteQueueMember"], message.chat.type == "private")
                     try:
                         builder = InlineKeyboardBuilder()
                         builder.button(text="Встать в очередь",
@@ -536,7 +583,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 
 @dp.callback_query(StopVoteCallback.filter(F.ID != 0))
 async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
-    st = await api.print_queue(callback_data.queueID)
+    st = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
     await bot.send_message(chat_id=callback_data.ID, text=st, message_thread_id=callback_data.thread_id,
                            parse_mode='MarkdownV2')
     await bot.delete_message(chat_id=callback_data.ID, message_id=callback_data.message_id)
@@ -578,7 +625,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
         if is_queue_member:
             await call.answer("Вы уже добавлены в очередь")
         else:
-            group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+            group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
             builder = InlineKeyboardBuilder()
             builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
             builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
@@ -596,7 +643,7 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
     else:
-        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID)
+        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
