@@ -7,6 +7,7 @@ class TelegramUser(models.Model):
     groups = models.ManyToManyField('TelegramGroup', through='GroupMember')
     queue = models.ManyToManyField('Queue', through='QueueMember')
     tz = models.IntegerField(default=3)
+    is_started = models.BooleanField(default=False)
 
 
     def __str__(self):

@@ -83,13 +83,9 @@ def check_timezone(tz):
     return bool(re.fullmatch(r'\-?\d', tz))
 
 
-async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
+async def add_user_to_queue(queue_id: int, tg_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
-    try:
-        user, _ = await TelegramUser.objects.aget(pk=tg_id)
-    except Exception:
-        return {"started": False}
-    await TelegramUser.objects.filter(pk=tg_id).aupdate(full_name=full_name)
+    user = await TelegramUser.objects.aget(pk=tg_id)
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
     return {"started": True, "queue_member": not created}
 
@@ -112,6 +108,12 @@ async def update_message_id(queue_id: int, message_id: int):
 
 async def get_message_id(queue_id: int):
     return (await Queue.objects.aget(pk=queue_id)).message_id
+
+
+async def get_queue_link(queue_id: int):
+    queue = Queue.objects.aget(pk=queue_id)
+    link = f"https://t.me/c/{abs(queue.group_id)}/{queue.message_id}"
+    return link
 
 
 async def delete_queue(queue_id: int):
@@ -172,4 +174,4 @@ async def remove_first(queue_id: int):
 
 
 async def save_user(tg_id: int, full_name: str):
-    await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name, is_started=True)
