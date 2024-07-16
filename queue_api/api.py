@@ -92,13 +92,13 @@ async def add_user_to_queue(queue_id: int, tg_id: int):
 
 async def print_queue(queue_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
-    users = [user async for user in queue.telegramuser_set.all()]
+    members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.message}\n"
     res_string += "\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\n"
-    for index, user in enumerate(users, 1):
-        queue_member = await QueueMember.objects.aget(queue_id=queue.id, user_id=user.tg_id)
+    for index, member in enumerate(members, 1):
+        user = await TelegramUser.objects.aget(pk=member.user_id)
         res_string += (str(index) + '\. ')
-        res_string += f"{user.full_name} \(`{queue_member.pk}`\)\n"
+        res_string += f"{user.full_name} \(`{member.pk}`\)\n"
     return queue.group_id, queue.message_id, res_string
 
 
@@ -177,3 +177,30 @@ async def save_user(tg_id: int, full_name: str):
     user, created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
     user.is_started = True
     await user.asave()
+
+
+async def get_queue_member_id(queue_id: int, tg_id: int):
+    queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
+    return queue_member.pk
+
+
+async def get_user_id(first_member_id: int, second_member_id: str):
+    first = await QueueMember.objects.aget(pk=first_member_id)
+    queue = await Queue.objects.aget(pk=first.queue_id)
+    try:
+        second_member_id = int(second_member_id)
+    except Exception:
+        return {'status': 'Incorrect input', 'message': 'Ты долбаёб блять хули ты хуйню какую-то пихаешь??????'}
+
+    if second_member_id not in [member.pk async for member in queue.queuemember_set.all()]:
+        return {'status': 'Wrong queue', 'message': 'Хули ты в неправильную очередь лезешь уёбок????????'}
+    second = await QueueMember.objects.aget(pk=second_member_id)
+    return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ай молодца, сосни-ка хуйца'}
+
+
+async def swap_places(first_member_id: int, second_member_id: int):
+    first = await QueueMember.objects.aget(pk=first_member_id)
+    second = await QueueMember.objects.aget(pk=second_member_id)
+    first.pk, second.pk = second.pk, first.pk
+    await first.asave()
+    await second.asave()
