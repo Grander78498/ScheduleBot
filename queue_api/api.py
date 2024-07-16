@@ -18,9 +18,13 @@ import re
 async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
     group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
     for admin, name in zip(admins, names):
-        user, _ = await TelegramUser.objects.aget_or_create(tg_id=admin, full_name=name)
-        await user.groups.aadd(group, through_defaults={"is_admin": True})
-        await user.asave()
+        try:
+            user, _ = await TelegramUser.objects.aget_or_create(tg_id=admin, full_name=name)
+            await user.groups.aadd(group, through_defaults={"is_admin": True})
+            await user.asave()
+        except Exception as e:
+            print(e)
+
 
 
 async def check_admin(admin_id: int):
@@ -86,7 +90,9 @@ def check_timezone(tz):
 
 async def add_user_to_queue(queue_id: int, tg_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
+    print("a")
     user = await TelegramUser.objects.aget(pk=tg_id)
+    print("b")
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
     return {"started": user.is_started, "queue_member": not created}
 
@@ -189,9 +195,9 @@ async def remove_first(queue_id: int):
         return False
 
 
-async def save_user(tg_id: int, full_name: str):
+async def save_user(tg_id: int, full_name: str, start: bool):
     user, created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
-    user.is_started = True
+    user.is_started = start
     await user.asave()
 
 

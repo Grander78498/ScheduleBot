@@ -128,7 +128,7 @@ class SwapCallback(CallbackData, prefix="swap"):
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if len(str(message.text).split())>1:
         queueID=int(str(message.text).split()[1])
-        await api.save_user(message.chat.id, message.from_user.full_name)
+        await api.save_user(message.chat.id, message.from_user.full_name, True)
         _,_ = await api.add_user_to_queue(queueID, message.chat.id)
         group_id, queue_message_id, queue = await api.print_queue(queueID, False)
         try:
@@ -163,7 +163,8 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         await message.answer(
             "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу. Для его замены наберите команду /change_tz")
     elif message.chat.type == "private":
-        await api.save_user(message.chat.id, message.from_user.full_name)
+        if len(str(message.text).split())==1:
+            await api.save_user(message.chat.id, message.from_user.full_name, True)
         await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
 
@@ -206,6 +207,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
                                         reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
         except Exception as _ex:
             print(_ex)
+        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поненяны в очереди")
     await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
     await call.answer()
 
@@ -213,7 +215,6 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
 
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    await call.answer("Функционал в разработке")
     queueList, lenq, st, names = await api.get_user_queues(call.from_user.id)
     if lenq==0:
         await call.message.answer(st)
@@ -655,8 +656,13 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id)
-    is_started = client["started"]
+    is_started = False
+    try:
+        client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id)
+        is_started = client["started"]
+    except Exception as e:
+        await api.save_user(call.from_user.id, call.from_user.full_name, False)
+    print(is_started, call.from_user.full_name)
     if is_started:
         is_queue_member = client["queue_member"]
         if is_queue_member:
