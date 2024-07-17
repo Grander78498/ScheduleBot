@@ -8,6 +8,8 @@ from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER
+from aiogram.types import ChatMemberUpdated
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
@@ -171,6 +173,18 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
 @dp.message(Command("change_tz"))
 async def cmd_change_tz(message: types.Message,  state: FSMContext):
     await message.answer("Переезжай в Москву")
+
+
+@dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
+async def user_blocked_bot(event: ChatMemberUpdated):
+    print("Чел вылетел")
+
+
+@dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
+async def user_unblocked_bot(event: ChatMemberUpdated):
+    print("Чел залетел")
+
+
 
 
 async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
