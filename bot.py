@@ -177,13 +177,12 @@ async def cmd_change_tz(message: types.Message,  state: FSMContext):
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
 async def user_blocked_bot(event: ChatMemberUpdated):
-    print("Чел вылетел")
+    await api.update_started(event.from_user.id, event.from_user.full_name, False)
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
-    print("Чел залетел")
-
+    await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
 

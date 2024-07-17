@@ -238,3 +238,9 @@ async def swap_places(first_member_id: int, second_member_id: int):
     first.pk, second.pk = second.pk, first.pk
     await first.asave()
     await second.asave()
+
+
+async def update_started(tg_id: int, full_name: str, started: bool):
+    user, _ = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    user.is_started = started
+    await user.asave()
