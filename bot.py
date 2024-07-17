@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import datetime
-from queue_api import api
+
 import aiogram
+
+from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
@@ -122,14 +124,12 @@ class SwapCallback(CallbackData, prefix="swap"):
     message_id: int
 
 
-
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if len(str(message.text).split())>1:
-        queueID=int(str(message.text).split()[1])
-        await api.save_user(message.chat.id, message.from_user.full_name, True)
-        _,_ = await api.add_user_to_queue(queueID, message.chat.id)
+        queueID = int(str(message.text).split()[1])
+        await api.save_user(message.chat.id, message.from_user.full_name)
+        _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
         group_id, queue_message_id, queue = await api.print_queue(queueID, False)
         try:
             builder = InlineKeyboardBuilder()
@@ -164,7 +164,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу. Для его замены наберите команду /change_tz")
     elif message.chat.type == "private":
         if len(str(message.text).split())==1:
-            await api.save_user(message.chat.id, message.from_user.full_name, True)
+            await api.save_user(message.chat.id, message.from_user.full_name)
         await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
 
@@ -180,14 +180,16 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
         await message.answer(result["message"])
     else:
         await message.answer(result["message"])
-        mes = await bot.send_message(chat_id=result["user_id"], 
-                               text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
-        builder = InlineKeyboardBuilder()
-        builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
-        builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
-        await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
-                                            reply_markup=builder.as_markup())
-    
+        try:
+            mes = await bot.send_message(chat_id=result["user_id"],
+                                   text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
+            builder = InlineKeyboardBuilder()
+            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
+            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
+            await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
+                                                reply_markup=builder.as_markup())
+        except aiogram.exceptions.TelegramForbiddenError:
+            await message.answer("Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
 
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
@@ -207,7 +209,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
                                         reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
         except Exception as _ex:
             print(_ex)
-        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поненяны в очереди")
+        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
     await call.answer()
 
@@ -656,13 +658,8 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
-    is_started = False
-    try:
-        client= await api.add_user_to_queue(callback_data.queueID, call.from_user.id)
-        is_started = client["started"]
-    except Exception as e:
-        await api.save_user(call.from_user.id, call.from_user.full_name, False)
-    print(is_started, call.from_user.full_name)
+    client = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
+    is_started = client["started"]
     if is_started:
         is_queue_member = client["queue_member"]
         if is_queue_member:

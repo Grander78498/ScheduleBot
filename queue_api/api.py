@@ -88,11 +88,11 @@ def check_timezone(tz):
     return bool(re.fullmatch(r'\-?\d', tz))
 
 
-async def add_user_to_queue(queue_id: int, tg_id: int):
+async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     queue = await Queue.objects.aget(pk=queue_id)
-    print("a")
-    user = await TelegramUser.objects.aget(pk=tg_id)
-    print("b")
+    user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    if user_created:
+        return {"started": False}
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
     return {"started": user.is_started, "queue_member": not created}
 
@@ -195,9 +195,9 @@ async def remove_first(queue_id: int):
         return False
 
 
-async def save_user(tg_id: int, full_name: str, start: bool):
+async def save_user(tg_id: int, full_name: str):
     user, created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
-    user.is_started = start
+    user.is_started = True
     await user.asave()
 
 
@@ -221,13 +221,14 @@ async def get_user_id(first_member_id: int, second_member_id: str):
     second = await QueueMember.objects.aget(pk=second_member_id)
     return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ай молодца, сосни-ка хуйца',
             'first_name': (await TelegramUser.objects.aget(pk=first.user_id)).full_name, 'queue_name': queue.message,
-            'first_position': await get_queue_position(first.pk), 'second_position': await get_queue_position(second.pk)}
+            'first_position': await get_queue_position(first.pk), 'second_position': await get_queue_position(second.pk),
+            'second_name': (await TelegramUser.objects.aget(pk=second.user_id)).full_name}
 
 
 async def get_queue_position(member_id: int):
     member = await QueueMember.objects.aget(pk=member_id)
     queue = await Queue.objects.aget(pk=member.queue_id)
-    member_list = [mb async for mb in queue.queuemember_set.all()]
+    member_list = [mb async for mb in queue.queuemember_set.order_by("pk")]
     return member_list.index(member) + 1
 
 
