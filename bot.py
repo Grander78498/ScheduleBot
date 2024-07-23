@@ -126,32 +126,27 @@ class SwapCallback(CallbackData, prefix="swap"):
     message_id: int
 
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message, state: FSMContext) -> None:
-    if len(str(message.text).split())>1:
-        queueID = int(str(message.text).split()[1])
-        await api.save_user(message.chat.id, message.from_user.full_name)
-        _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
-        group_id, queue_message_id, queue = await api.print_queue(queueID, False)
-        try:
-            builder = InlineKeyboardBuilder()
-            builder.button(text="Встать в очередь",
-                               callback_data=QueueIDCallback(queueID=queueID))
-            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queueID))
-            builder.adjust(1)
-            await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
-                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        except Exception as _ex:
-            print(_ex)
-        link = await api.get_queue_link(queueID)
-        return_builder = InlineKeyboardBuilder()
-        return_builder.button(text="Вернуться в группу", url=link)
-        await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
+@dp.message(Command("func"))
+async def print_info(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
     builder.adjust(1)
+    await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+
+
+@dp.message(Command("change_topic"))
+async def change_topic(message: types.Message):
+    ok = True if message.from_user.id in [i.user.id for i in (await bot.get_chat_administrators(message.chat.id))] else False
+    if ok:
+        await api.change_topic(message.chat.id, message.message_thread_id)
+
+
+
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message) -> None:
     if message.chat.type == "group" or message.chat.type == "supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
@@ -163,11 +158,32 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             names.append(name)
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу. Для его замены наберите команду /change_tz")
+            "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
     elif message.chat.type == "private":
-        if len(str(message.text).split())==1:
+        if len(str(message.text).split())>1:
+            queueID = int(str(message.text).split()[1])
             await api.save_user(message.chat.id, message.from_user.full_name)
-        await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+            _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
+            group_id, queue_message_id, queue = await api.print_queue(queueID, False)
+            try:
+                builder = InlineKeyboardBuilder()
+                builder.button(text="Встать в очередь",
+                                   callback_data=QueueIDCallback(queueID=queueID))
+                builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queueID))
+                builder.adjust(1)
+                await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
+                                            reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+            except Exception as _ex:
+                print(_ex)
+            link = await api.get_queue_link(queueID)
+            return_builder = InlineKeyboardBuilder()
+            return_builder.button(text="Вернуться в группу", url=link)
+            await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
+        elif len(str(message.text).split())==1:
+            builder_add = InlineKeyboardBuilder()
+            builder_add.button(text="ЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁ", url="https://t.me/DLVScheduleBot?startgroup=L")
+            await api.save_user(message.chat.id, message.from_user.full_name)
+        await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /func", reply_markup=builder_add.as_markup())
 
 
 @dp.message(Command("change_tz"))
