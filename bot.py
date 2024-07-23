@@ -141,6 +141,13 @@ async def change_topic(message: types.Message):
     ok = True if message.from_user.id in [i.user.id for i in (await bot.get_chat_administrators(message.chat.id))] else False
     if ok:
         await api.change_topic(message.chat.id, message.message_thread_id)
+        await message.answer(text="Тема изменена успешно")
+    else:
+        try:
+            await bot.send_message(text="Пошёл нахуй пидорас уёбище блядское хули лезешь не туда???",
+                                   chat_id=message.from_user.id)
+        except aiogram.exceptions.TelegramForbiddenError:
+            pass
 
 
 
