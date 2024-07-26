@@ -34,24 +34,14 @@ async def check_admin(admin_id: int):
     return groups
 
 
-async def add_queue(data_dict):
-    message = data_dict['text']
-    group_id = data_dict['group_id']
-    creator_id = data_dict['creator_id']
-    creator = await TelegramUser.objects.aget(pk=creator_id)
-    tz = creator.tz
-    tz = str(tz).rjust(2, '0') + '00'
-    date = datetime.strptime(
-        f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
-        "%Y-%m-%d %H:%M%z")
-    group = await TelegramGroup.objects.aget(pk=group_id)
-    queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
-
+async def create_queue_tasks(queue_id: int, group_id: int):
+    queue = Queue.objects.get(pk=queue_id)
+    group = TelegramGroup.objects.get(pk=group_id)
     if not settings.DEBUG:
         clocked, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
         await PeriodicTask.objects.acreate(
             clocked=clocked,
-            name=f"Queue {queue.message}. Created by {creator.full_name}",
+            name=f"Queue {queue.message}. Created in {group.name}",
             task="send_queue",
             one_off=True,
             args=json.dumps([queue.pk]),
@@ -64,6 +54,20 @@ async def add_queue(data_dict):
         #     await asyncio.sleep((queue.date - timezone.now()).seconds)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
         await queue_send(queue.pk, group.thread_id, group.pk, queue.message)
+
+
+async def add_queue(data_dict):
+    message = data_dict['text']
+    group_id = data_dict['group_id']
+    creator_id = data_dict['creator_id']
+    creator = await TelegramUser.objects.aget(pk=creator_id)
+    tz = creator.tz
+    tz = str(tz).rjust(2, '0') + '00'
+    date = datetime.strptime(
+        f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
+        "%Y-%m-%d %H:%M%z")
+    group = await TelegramGroup.objects.aget(pk=group_id)
+    queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
             queue.date)
