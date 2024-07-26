@@ -126,7 +126,7 @@ class SwapCallback(CallbackData, prefix="swap"):
     message_id: int
 
 
-@dp.message(Command("func"))
+@dp.message(Command("queue"))
 async def print_info(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
@@ -190,7 +190,7 @@ async def cmd_start(message: types.Message) -> None:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="ЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁ", url="https://t.me/DLVScheduleBot?startgroup=L")
             await api.save_user(message.chat.id, message.from_user.full_name)
-        await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /func", reply_markup=builder_add.as_markup())
+        await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
 
 
 @dp.message(Command("change_tz"))
