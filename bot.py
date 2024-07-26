@@ -53,6 +53,7 @@ class States(StatesGroup):
     day = State()
     hm = State()
     swap = State()
+    tz = State()
 
 
 
@@ -195,7 +196,9 @@ async def cmd_start(message: types.Message) -> None:
 
 @dp.message(Command("change_tz"))
 async def cmd_change_tz(message: types.Message,  state: FSMContext):
-    await message.answer("Переезжай в Москву")
+    await message.answer("Введите новый часовой пояс")
+    await state.set_state(States.tz)
+
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
@@ -247,6 +250,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
             print(_ex)
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
+    await state.clear()
     await call.answer()
 
 
@@ -608,6 +612,11 @@ async def echo(message: Message, state: FSMContext) -> None:
                 case _:
                     await state.update_data(hm=message.text)
                     await putInDb(message, state)
+        if st == States.tz:
+            res = await api.change_tz(message.chat.id, message.text)
+            if res["status"]=="OK":
+                await state.clear()
+            await message.answer(res["message"])
         if st == States.renameQueue:
             data = await state.get_data()
             await api.rename_queue(data["renameQueue"], message.text)
