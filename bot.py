@@ -101,6 +101,7 @@ class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
     second_user_id: int
     first_m_id: int
     second_m_id: int
+    queue_id: int
 
 
 class QueueSelectCallback(CallbackData, prefix="queueSelect"):
@@ -132,7 +133,8 @@ class SwapCallback(CallbackData, prefix="swap"):
     first_tg_user_id: int
     queueId: int
     second_user_id: int
-    message_id: int
+    message2_id: int
+    message1_id: int
 
 
 @dp.message(Command("queue"))
@@ -222,6 +224,7 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
 
 async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
     queueID = (await state.get_data())["swap"]
+    await state.clear()
     result = await api.get_user_id(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
     if result["status"]!="OK":
         await message.answer(result["message"])
@@ -231,12 +234,12 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
             mes = await bot.send_message(chat_id=result["user_id"],
                                    text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
             builder = InlineKeyboardBuilder()
-            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
-            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
+            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message2_id=mes.message_id, message1_id=mess_lichka.message_id))
+            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message2_id=mes.message_id, message1_id=mess_lichka.message_id))
             await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
                                                 reply_markup=builder.as_markup())
-            await api.handle_request(from_user_id,result["user_id"])
-            await api.add_request_timer(from_user_id,result["user_id"], mess_lichka.message_id, mes.message_id)
+            await api.handle_request(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
+            await api.add_request_timer(from_user_id,result["user_id"], mess_lichka.message_id, mes.message_id, queueID)
 
         except aiogram.exceptions.TelegramForbiddenError:
             await message.answer("Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
@@ -245,7 +248,7 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
 
 async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Удалить запрос", callback_data=RemoveSwapRequest(first_m_id=message1_id,second_m_id=message2_id, first_user_id=first_id, second_user_id=second_id))
+    builder.button(text="Удалить запрос", callback_data=RemoveSwapRequest(first_m_id=message1_id,second_m_id=message2_id, first_user_id=first_id, second_user_id=second_id, queue_id=queue_id))
     try:
         await bot.edit_message_reply_markup(chat_id=first_id, message_id=message1_id,
                                             reply_markup=builder.as_markup())
@@ -255,7 +258,7 @@ async def edit_request_message(first_id: int, second_id: int, message1_id: int, 
 
 @dp.callback_query(RemoveSwapRequest.filter(F.first_m_id != 0))
 async def remove_swap(call: CallbackQuery, callback_data: RemoveSwapRequest):
-    await api.remove_request(callback_data.first_user_id, callback_data.second_user_id)
+    await api.remove_request(callback_data.first_user_id, callback_data.second_user_id, callback_data.queue_id)
     await delete_request_messages(callback_data.first_m_id, callback_data.second_m_id, callback_data.first_user_id, callback_data.second_user_id)
 
 
@@ -287,9 +290,8 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
         except Exception as _ex:
             print(_ex)
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
-    await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
-    await state.clear()
-    await api.remove_request()
+    await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
+    await delete_request_messages(callback_data.message1_id, callback_data.message2_id,callback_data.first_tg_user_id ,call.from_user.id)
     await call.answer()
 
 
@@ -661,9 +663,10 @@ async def echo(message: Message, state: FSMContext) -> None:
         if st == States.text:
             await state.update_data(text=message.text)
             await short_cut(message, state)
-        if st == States.swap:
+        elif st == States.swap:
             await send_swap_request(message, message.text, message.chat.id, state)
-        if st == States.hm:
+            await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        elif st == States.hm:
             data = await state.get_data()
             t = api.check_time(message.text, data["year"], data["month"], data["day"])
             match t:
@@ -674,12 +677,12 @@ async def echo(message: Message, state: FSMContext) -> None:
                 case _:
                     await state.update_data(hm=message.text)
                     await putInDb(message, state)
-        if st == States.tz:
+        elif st == States.tz:
             res = await api.change_tz(message.chat.id, message.text)
             if res["status"]=="OK":
                 await state.clear()
             await message.answer(res["message"])
-        if st == States.renameQueue:
+        elif st == States.renameQueue:
             data = await state.get_data()
             await api.rename_queue(data["renameQueue"], message.text)
             group_id, queue_message_id, queue = await api.print_queue(data["renameQueue"], message.chat.type == "private")
@@ -699,7 +702,7 @@ async def echo(message: Message, state: FSMContext) -> None:
             builder.adjust(1)
             await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
 
-        if st == States.deleteQueueMember:
+        elif st == States.deleteQueueMember:
             data = await state.get_data()
             result = await api.delete_queue_member(message.text)
             match result:
@@ -726,6 +729,8 @@ async def echo(message: Message, state: FSMContext) -> None:
                     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
                     builder.adjust(1)
                     await message.answer("Участник был успешно удалён", reply_markup=builder.as_markup())
+        else:
+            await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
 @dp.callback_query(StopVoteCallback.filter(F.ID != 0))

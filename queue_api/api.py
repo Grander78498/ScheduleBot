@@ -293,7 +293,7 @@ async def add_request_timer(first_id: int, second_id: int, message1_id: int, mes
 async def remove_request(first_id: int, second_id: int, queue_id: int):
     first_member = await QueueMember.objects.aget(user_id=first_id, queue_id=queue_id)
     first_member.has_out_request = False
-    second_member = await TelegramUser.objects.aget(user_id=second_id, queue_id=queue_id)
+    second_member = await QueueMember.objects.aget(user_id=second_id, queue_id=queue_id)
     second_member.has_in_request = False
     await first_member.asave()
     await second_member.asave()
