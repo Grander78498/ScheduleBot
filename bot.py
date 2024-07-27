@@ -243,7 +243,7 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
 
 
 
-async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int):
+async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
     builder = InlineKeyboardBuilder()
     builder.button(text="Удалить запрос", callback_data=RemoveSwapRequest(first_m_id=message1_id,second_m_id=message2_id, first_user_id=first_id, second_user_id=second_id))
     try:
