@@ -223,7 +223,10 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
 
 
 async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
-    queueID = (await state.get_data())["swap"]
+    res = (await state.get_data())["swap"]
+    queueID = res["queueID"]
+    await bot.delete_message(chat_id=from_user_id, message_id=res["first_m"])
+    await bot.delete_message(chat_id=from_user_id, message_id=res["second_m"])
     await state.clear()
     result = await api.get_user_id(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
     if result["status"]!="OK":
@@ -321,10 +324,11 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
     status = await api.check_requests(call.from_user.id, callback_data.queueID)
     if not status["in"] and not status["out"]:
         _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
-        await call.message.answer(text, parse_mode="MarkdownV2")
-        await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
+        a = await call.message.answer(text, parse_mode="MarkdownV2")
+        b = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
         await state.set_state(States.swap)
-        await state.update_data(swap=callback_data.queueID)
+        res = {"queueID":callback_data.queueID, "first_m":a.message_id, "second_m":b.message_id}
+        await state.update_data(swap=res)
         await call.answer()
     elif not status["out"]:
         await call.answer("У вас есть нерассмотренный входящий запрос")
