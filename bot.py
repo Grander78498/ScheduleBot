@@ -573,6 +573,15 @@ async def next_hour(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+@dp.callback_query(F.data.in_(['today']))
+async def tomorrow(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
 @dp.callback_query(F.data.in_(['tomorrow']))
 async def tomorrow(call: CallbackQuery, state: FSMContext):
     now = datetime.datetime.now()+datetime.timedelta(days=1)
@@ -587,6 +596,7 @@ async def short_cut(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     builder.button(text="Сейчас",callback_data="now")
     builder.button(text="Через час",callback_data="one_hour")
+    builder.button(text="Сегодня",callback_data="today")
     builder.button(text="Завтра",callback_data="tomorrow")
     builder.button(text="Задать самостоятельно",callback_data="custom")
     builder.adjust(2)
