@@ -15,6 +15,10 @@ import json
 import re
 
 
+async def get_bot_name(bot):
+    return (await bot.get_me()).username
+
+
 async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
     group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
     for admin, name in zip(admins, names):

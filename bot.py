@@ -20,6 +20,7 @@ from config import API_TOKEN
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 
+
 dp = Dispatcher()
 
 voted = {}
@@ -189,7 +190,7 @@ async def cmd_start(message: types.Message) -> None:
             await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split())==1:
             builder_add = InlineKeyboardBuilder()
-            builder_add.button(text="ЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁЁ", url="https://t.me/DLVScheduleBot?startgroup=L")
+            builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages".format(await api.get_bot_name(bot)))
             await api.save_user(message.chat.id, message.from_user.full_name)
         await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
 
@@ -719,7 +720,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
                                         reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
             await call.answer()
     else:
-        await call.answer(url="https://t.me/DLVScheduleBot?start={}".format(callback_data.queueID))
+        await call.answer(url="https://t.me/{}?start={}".format(await api.get_bot_name(bot), callback_data.queueID))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
