@@ -39,8 +39,8 @@ async def check_admin(admin_id: int):
 
 
 async def create_queue_tasks(queue_id: int, group_id: int):
-    queue = Queue.objects.get(pk=queue_id)
-    group = TelegramGroup.objects.get(pk=group_id)
+    queue = await Queue.objects.aget(pk=queue_id)
+    group = await TelegramGroup.objects.aget(pk=group_id)
     if not settings.DEBUG:
         clocked, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
         await PeriodicTask.objects.acreate(
@@ -57,6 +57,7 @@ async def create_queue_tasks(queue_id: int, group_id: int):
         if queue.date > timezone.now():
             await asyncio.sleep((queue.date - timezone.now()).seconds)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
+        await asyncio.sleep(5)
         await queue_send(queue.pk, group.thread_id, group.pk, queue.message)
 
 
@@ -97,7 +98,10 @@ def check_timezone(tz):
 
 
 async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
-    queue = await Queue.objects.aget(pk=queue_id)
+    try:
+        queue = await Queue.objects.aget(pk=queue_id)
+    except:
+        return {"error": "Да ты бы ещё за хлебом 2к10 года пошёл, срарый пердед"}
     user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
     if user_created:
         return {"started": False}
