@@ -96,6 +96,13 @@ class RemoveMyself(CallbackData, prefix="RemoveMyself"):
     queueID: int
 
 
+class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
+    first_user_id: int
+    second_user_id: int
+    first_m_id: int
+    second_m_id: int
+
+
 class QueueSelectCallback(CallbackData, prefix="queueSelect"):
     queueID: int
     delete_message_id: int
@@ -219,7 +226,7 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
     if result["status"]!="OK":
         await message.answer(result["message"])
     else:
-        await message.answer(result["message"])
+        mess_lichka = await message.answer(result["message"])
         try:
             mes = await bot.send_message(chat_id=result["user_id"],
                                    text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
@@ -228,19 +235,38 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
             builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
             await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
                                                 reply_markup=builder.as_markup())
-            """
-            ЗДЕСЬ ПИСАТЬ КОД!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            """
+            await api.handle_request(from_user_id,result["user_id"])
+            await api.add_request_timer(from_user_id,result["user_id"], mess_lichka.message_id, mes.message_id)
+
         except aiogram.exceptions.TelegramForbiddenError:
             await message.answer("Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
 
 
-async def edit_request_message(user_id: int, message_id: int):
-    pass
+
+async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Удалить запрос", callback_data=RemoveSwapRequest(first_m_id=message1_id,second_m_id=message2_id, first_user_id=first_id, second_user_id=second_id))
+    try:
+        await bot.edit_message_reply_markup(chat_id=first_id, message_id=message1_id,
+                                            reply_markup=builder.as_markup())
+    except:
+        print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
 
-async def delete_request_messages(first_message_id: int, second_message_id: int):
-    pass
+@dp.callback_query(RemoveSwapRequest.filter(F.first_m_id != 0))
+async def remove_swap(call: CallbackQuery, callback_data: RemoveSwapRequest):
+    await api.remove_request(callback_data.first_user_id, callback_data.second_user_id)
+    await delete_request_messages(callback_data.first_m_id, callback_data.second_m_id, callback_data.first_user_id, callback_data.second_user_id)
+
+
+
+async def delete_request_messages(first_message_id: int, second_message_id: int, chat1_id, chat2_id):
+    try:
+        await bot.delete_message(chat_id=chat1_id, message_id=first_message_id)
+        await bot.delete_message(chat_id=chat2_id, message_id=second_message_id)
+    except:
+        await bot.send_message(chat_id=chat1_id, text="You are gay")
+        await bot.send_message(chat_id=chat2_id, text="You are gay")
 
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
@@ -263,6 +289,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
     await state.clear()
+    await api.remove_request()
     await call.answer()
 
 
@@ -289,12 +316,20 @@ async def swap(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
-    _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
-    await call.message.answer(text, parse_mode="MarkdownV2")
-    await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
-    await state.set_state(States.swap)
-    await state.update_data(swap=callback_data.queueID)
-    await call.answer()
+    status = await api.check_requests(call.from_user.id, callback_data.queueID)
+    if not status["in"] and not status["out"]:
+        _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
+        await call.message.answer(text, parse_mode="MarkdownV2")
+        await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
+        await state.set_state(States.swap)
+        await state.update_data(swap=callback_data.queueID)
+        await call.answer()
+    elif not status["out"]:
+        await call.answer("У вас есть нерассмотренный входящий запрос")
+    elif not status["in"]:
+        await call.answer("У вас уже есть отправленный запрос, если прошло достаточно времени, вы можете его удалить")
+    else:
+        await call.answer("Долбоёб, как ты это вообще сделал, админам бота пиши тварь")
 
 
 

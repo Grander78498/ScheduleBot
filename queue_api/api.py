@@ -283,12 +283,12 @@ async def handle_request(first_id: int, second_id: int):
     await second_user.asave()
 
 
-async def add_request_timer(first_id: int, second_id: int, message_id: int):
+async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id:int):
     if not settings.DEBUG:
         pass
     else:
-        await asyncio.sleep(30)
-        await bot.edit_request_message(first_id, second_id, message_id)
+        await asyncio.sleep(10)
+        await bot.edit_request_message(first_id, second_id, message1_id, message2_id)
 
 
 async def remove_request(first_id: int, second_id: int):
