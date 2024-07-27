@@ -44,3 +44,6 @@ class QueueMember(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     queue = models.ForeignKey('Queue', on_delete=models.CASCADE)
     vote_time = models.DateTimeField(auto_now_add=True)
+    has_in_request = models.BooleanField(default=False)
+    has_out_request = models.BooleanField(default=False)
+    # sent_request_time = models.DateTimeField(auto_now=True)

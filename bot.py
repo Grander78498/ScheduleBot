@@ -228,8 +228,17 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
             builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message_id=mes.message_id))
             await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
                                                 reply_markup=builder.as_markup())
+            ###
         except aiogram.exceptions.TelegramForbiddenError:
             await message.answer("Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
+
+
+async def edit_request_message(user_id: int, message_id: int):
+    pass
+
+
+async def delete_request_messages(first_message_id: int, second_message_id: int):
+    pass
 
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))

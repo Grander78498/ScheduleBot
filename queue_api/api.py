@@ -5,6 +5,7 @@
 
 import asyncio
 
+import bot
 from .models import *
 from datetime import datetime, timedelta
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
@@ -266,3 +267,32 @@ async def change_tz(user_id: int, tz: str):
 
     await TelegramUser.objects.filter(pk=user_id).aupdate(tz=tz)
     return {'status': 'OK', 'message': 'Справился с вводом одной цифры'}
+
+
+
+async def handle_request(first_id: int, second_id: int):
+    first_user = await TelegramUser.objects.aget(pk=first_id)
+    first_user.has_out_request = True
+    second_user = await TelegramUser.objects.aget(pk=second_id)
+    second_user.has_in_request = True
+    await first_user.asave()
+    await second_user.asave()
+
+
+async def add_request_timer(first_id: int, second_id: int, message_id: int):
+    if not settings.DEBUG:
+        pass
+    else:
+        await asyncio.sleep(30)
+        await bot.edit_request_message(first_id, second_id, message_id)
+
+
+async def remove_request(first_id: int, second_id: int, first_message_id: int, second_message_id: int):
+    first_user = await TelegramUser.objects.aget(pk=first_id)
+    first_user.has_out_request = False
+    second_user = await TelegramUser.objects.aget(pk=second_id)
+    second_user.has_in_request = False
+    await first_user.asave()
+    await second_user.asave()
+
+    await bot.delete_request_messages(first_message_id, second_message_id)
