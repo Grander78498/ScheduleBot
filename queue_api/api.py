@@ -291,7 +291,7 @@ async def add_request_timer(first_id: int, second_id: int, message_id: int):
         await bot.edit_request_message(first_id, second_id, message_id)
 
 
-async def remove_request(first_id: int, second_id: int, first_message_id: int, second_message_id: int):
+async def remove_request(first_id: int, second_id: int):
     first_user = await TelegramUser.objects.aget(pk=first_id)
     first_user.has_out_request = False
     second_user = await TelegramUser.objects.aget(pk=second_id)
@@ -299,4 +299,9 @@ async def remove_request(first_id: int, second_id: int, first_message_id: int, s
     await first_user.asave()
     await second_user.asave()
 
-    await bot.delete_request_messages(first_message_id, second_message_id)
+    # await bot.delete_request_messages(first_message_id, second_message_id)
+
+
+async def check_requests(user_id: int, queue_id: int):
+    queue_member = await QueueMember.objects.aget(user_id=user_id, queue_id=queue_id)
+    return {'in': queue_member.has_in_request, 'out': queue_member.has_out_request}
