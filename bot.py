@@ -521,7 +521,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         data["creator_id"] = message.chat.id
     except Exception:
         print("Error")
-    thread_id, date = await api.add_queue(data)
+    thread_id, date, queue_id = await api.add_queue(data)
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")

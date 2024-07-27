@@ -54,8 +54,8 @@ async def create_queue_tasks(queue_id: int, group_id: int):
     else:
         from bot import queue_send, queue_notif_send
 
-        # if queue.date > timezone.now():
-        #     await asyncio.sleep((queue.date - timezone.now()).seconds)
+        if queue.date > timezone.now():
+            await asyncio.sleep((queue.date - timezone.now()).seconds)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
         await queue_send(queue.pk, group.thread_id, group.pk, queue.message)
 
@@ -74,7 +74,7 @@ async def add_queue(data_dict):
     queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            queue.date)
+            queue.date, queue.pk)
 
 
 def check_time(time, year, month, day):
