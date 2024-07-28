@@ -291,6 +291,7 @@ async def remove_request(first_id: int, second_id: int, queue_id: int):
     first_member = await QueueMember.objects.aget(user_id=first_id, queue_id=queue_id)
     second_member = await QueueMember.objects.aget(user_id=second_id, queue_id=queue_id)
     await SwapRequest.objects.filter(first_member=first_member, second_member=second_member).adelete()
+    return second_member.pk
 
 
 async def check_requests(user_id: int, queue_id: int):
@@ -300,10 +301,11 @@ async def check_requests(user_id: int, queue_id: int):
     return {'in': has_in_requests, 'out': has_out_requests}
 
 
-async def remove_all_in_requests(user_id: int, queue_id: int):
-    queue_member = await QueueMember.objects.aget(user_id=user_id, queue_id=queue_id)
+async def remove_all_in_requests(member_id: int):
+    queue_member = await QueueMember.objects.aget(pk=member_id)
     all_in_requests = queue_member.second_member.all()
-    result = [{"first_member": req.first_member, "first_message_id": req.first_message_id,
-               "second_message_id": req.second_message_id,} async for req in all_in_requests]
+    result = [{"first_member": (await QueueMember.objects.aget(pk=req.first_member_id)).user_id,
+               "first_message_id": req.first_message_id,
+               "second_message_id": req.second_message_id} async for req in all_in_requests]
     await all_in_requests.adelete()
     return result

@@ -277,7 +277,7 @@ async def delete_request_messages(first_message_id: int, second_message_id: int,
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
 async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: FSMContext):
-    await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
+    current_member_id = await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
     if callback_data.message_type=="Deny":
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был отклонён")
     else:
@@ -295,9 +295,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
             print(_ex)
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await delete_request_messages(callback_data.message1_id, callback_data.message2_id,callback_data.first_tg_user_id ,call.from_user.id)
-    print("aaaaaaaaa")
-    deletable = await api.remove_all_in_requests(call.from_user.id, callback_data.queueId)
-    print(deletable, "qqqqqqqqqqqqqqqqqqqqqqqqq")
+    deletable = await api.remove_all_in_requests(current_member_id)
     for elem in deletable:
         await delete_request_messages(elem["first_message_id"], elem["second_message_id"], elem["first_member"], call.from_user.id)
         await bot.send_message(chat_id=elem["first_member"], text="Ваш запрос был отклонён")
