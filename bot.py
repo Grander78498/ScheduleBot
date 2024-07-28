@@ -588,7 +588,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
     mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                           text="Очередь {} будет создана {}. За час до этого будет отправлено напоминание".format(
+                           text="Очередь {} будет создана через {}. За час до этого будет отправлено напоминание".format(
                                data['text'], date))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
