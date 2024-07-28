@@ -275,11 +275,8 @@ async def change_tz(user_id: int, tz: str):
 
 async def handle_request(first_member_id: int, second_member_id: int):
     first_member = await QueueMember.objects.aget(pk=first_member_id)
-    first_member.has_out_request = True
     second_member = await QueueMember.objects.aget(pk=second_member_id)
-    second_member.has_in_request = True
-    await first_member.asave()
-    await second_member.asave()
+    await SwapRequest.objects.acreate(first_member=first_member, second_member=second_member)
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
@@ -292,15 +289,21 @@ async def add_request_timer(first_id: int, second_id: int, message1_id: int, mes
 
 async def remove_request(first_id: int, second_id: int, queue_id: int):
     first_member = await QueueMember.objects.aget(user_id=first_id, queue_id=queue_id)
-    first_member.has_out_request = False
     second_member = await QueueMember.objects.aget(user_id=second_id, queue_id=queue_id)
-    second_member.has_in_request = False
-    await first_member.asave()
-    await second_member.asave()
-
-    # await bot.delete_request_messages(first_message_id, second_message_id)
+    await SwapRequest.objects.adelete(first_member=first_member, second_member=second_member)
 
 
 async def check_requests(user_id: int, queue_id: int):
     queue_member = await QueueMember.objects.aget(user_id=user_id, queue_id=queue_id)
-    return {'in': queue_member.has_in_request, 'out': queue_member.has_out_request}
+    has_in_requests = (await queue_member.second_member.acount()) != 0
+    has_out_requests = (await queue_member.first_member.acount()) != 0
+    return {'in': has_in_requests, 'out': has_out_requests}
+
+
+async def remove_all_in_requests(user_id: int, queue_id: int):
+    queue_member = await QueueMember.objects.aget(user_id=user_id, queue_id=queue_id)
+    all_in_requests = queue_member.second_member.all()
+    result = [{"first_member": req.first_member, "first_message_id": req.first_message_id,
+               "second_message_id": req.second_message_id,} async for req in all_in_requests]
+    await all_in_requests.adelete()
+    return result

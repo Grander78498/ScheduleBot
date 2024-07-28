@@ -44,6 +44,13 @@ class QueueMember(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     queue = models.ForeignKey('Queue', on_delete=models.CASCADE)
     vote_time = models.DateTimeField(auto_now_add=True)
-    has_in_request = models.BooleanField(default=False)
-    has_out_request = models.BooleanField(default=False)
+    # has_in_request = models.BooleanField(default=False)
+    # has_out_request = models.BooleanField(default=False)
     # sent_request_time = models.DateTimeField(auto_now=True)
+
+
+class SwapRequest(models.Model):
+    first_member = models.ForeignKey('QueueMember', on_delete=models.CASCADE, related_name='first_member')
+    second_member = models.ForeignKey('QueueMember', on_delete=models.CASCADE, related_name='second_member')
+    first_message_id = models.BigIntegerField(null=True)
+    second_message_id = models.BigIntegerField(null=True)

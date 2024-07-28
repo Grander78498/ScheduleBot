@@ -330,9 +330,9 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
         res = {"queueID":callback_data.queueID, "first_m":queue_list_message.message_id, "second_m":simple_message.message_id}
         await state.update_data(swap=res)
         await call.answer()
-    elif not status["out"]:
+    elif status["in"]:
         await call.answer("У вас есть нерассмотренный входящий запрос")
-    elif not status["in"]:
+    elif status["out"]:
         await call.answer("У вас уже есть отправленный запрос, если прошло достаточно времени, вы можете его удалить")
     else:
         await call.answer("Долбоёб, как ты это вообще сделал, админам бота пиши тварь")
