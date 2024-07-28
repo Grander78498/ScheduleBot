@@ -324,10 +324,10 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
     status = await api.check_requests(call.from_user.id, callback_data.queueID)
     if not status["in"] and not status["out"]:
         _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
-        a = await call.message.answer(text, parse_mode="MarkdownV2")
-        b = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
+        queue_list_message = await call.message.answer(text, parse_mode="MarkdownV2")
+        simple_message = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
         await state.set_state(States.swap)
-        res = {"queueID":callback_data.queueID, "first_m":a.message_id, "second_m":b.message_id}
+        res = {"queueID":callback_data.queueID, "first_m":queue_list_message.message_id, "second_m":simple_message.message_id}
         await state.update_data(swap=res)
         await call.answer()
     elif not status["out"]:
