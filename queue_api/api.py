@@ -273,10 +273,10 @@ async def change_tz(user_id: int, tz: str):
     return {'status': 'OK', 'message': 'Справился с вводом одной цифры'}
 
 
-async def handle_request(first_member_id: int, second_member_id: int):
+async def handle_request(first_member_id: int, second_member_id: int, first_message_id: int, second_message_id: int):
     first_member = await QueueMember.objects.aget(pk=first_member_id)
     second_member = await QueueMember.objects.aget(pk=second_member_id)
-    await SwapRequest.objects.acreate(first_member=first_member, second_member=second_member)
+    await SwapRequest.objects.acreate(first_member=first_member, second_member=second_member, first_message_id=first_message_id, second_message_id=second_message_id)
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
@@ -290,7 +290,7 @@ async def add_request_timer(first_id: int, second_id: int, message1_id: int, mes
 async def remove_request(first_id: int, second_id: int, queue_id: int):
     first_member = await QueueMember.objects.aget(user_id=first_id, queue_id=queue_id)
     second_member = await QueueMember.objects.aget(user_id=second_id, queue_id=queue_id)
-    await SwapRequest.objects.adelete(first_member=first_member, second_member=second_member)
+    await SwapRequest.objects.filter(first_member=first_member, second_member=second_member).adelete()
 
 
 async def check_requests(user_id: int, queue_id: int):

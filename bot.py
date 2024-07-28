@@ -241,7 +241,7 @@ async def send_swap_request(message: types.Message, second_memberId: str,from_us
             builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message2_id=mes.message_id, message1_id=mess_lichka.message_id))
             await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
                                                 reply_markup=builder.as_markup())
-            await api.handle_request(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
+            await api.handle_request(await api.get_queue_member_id(queueID,from_user_id), second_memberId, mess_lichka.message_id, mes.message_id)
             await api.add_request_timer(from_user_id,result["user_id"], mess_lichka.message_id, mes.message_id, queueID)
 
         except aiogram.exceptions.TelegramForbiddenError:
@@ -255,8 +255,8 @@ async def edit_request_message(first_id: int, second_id: int, message1_id: int, 
     try:
         await bot.edit_message_reply_markup(chat_id=first_id, message_id=message1_id,
                                             reply_markup=builder.as_markup())
-    except:
-        print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+    except Exception as ex:
+        print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", ex)
 
 
 @dp.callback_query(RemoveSwapRequest.filter(F.first_m_id != 0))
@@ -277,6 +277,7 @@ async def delete_request_messages(first_message_id: int, second_message_id: int,
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
 async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: FSMContext):
+    await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
     if callback_data.message_type=="Deny":
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был отклонён")
     else:
@@ -293,8 +294,13 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
         except Exception as _ex:
             print(_ex)
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
-    await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
     await delete_request_messages(callback_data.message1_id, callback_data.message2_id,callback_data.first_tg_user_id ,call.from_user.id)
+    print("aaaaaaaaa")
+    deletable = await api.remove_all_in_requests(call.from_user.id, callback_data.queueId)
+    print(deletable, "qqqqqqqqqqqqqqqqqqqqqqqqq")
+    for elem in deletable:
+        await delete_request_messages(elem["first_message_id"], elem["second_message_id"], elem["first_member"], call.from_user.id)
+        await bot.send_message(chat_id=elem["first_member"], text="Ваш запрос был отклонён")
     await call.answer()
 
 
