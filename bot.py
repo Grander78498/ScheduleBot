@@ -780,6 +780,19 @@ async def queue_notif_send(queue_id, thread_id, group_id, message):
 #         await asyncio.sleep(20)
 
 
+async def render_queue(queue_id: int, private: bool):
+    try:
+        group_id, queue_message_id, queue = await api.print_queue(queue_id, private)
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
+        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
+        builder.adjust(1)
+        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
+                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+    except Exception as ex:
+        print(ex)
+
+
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
     client = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
@@ -792,17 +805,9 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
             if is_queue_member:
                 await call.answer("Вы уже добавлены в очередь")
             else:
-                try:
-                    group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
-                    builder = InlineKeyboardBuilder()
-                    builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
-                    builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
-                    builder.adjust(1)
-                    await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                                reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-                except Exception as ex:
-                    print("Пришли решалы сдавать работы")
-                await call.answer()
+                # Здесь был render_queue
+                pass
+            await call.answer()
         else:
             await call.answer(url="https://t.me/{}?start={}".format(await api.get_bot_name(bot), callback_data.queueID))
 

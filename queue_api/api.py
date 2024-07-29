@@ -8,8 +8,9 @@ import asyncio
 import bot
 from .models import *
 from datetime import datetime, timedelta
-from django_celery_beat.models import PeriodicTask, ClockedSchedule
+from django_celery_beat.models import PeriodicTask, ClockedSchedule, IntervalSchedule, SECONDS
 from django.conf import settings
+from django.db.models import F
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 import json
@@ -179,6 +180,22 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     if user_created:
         return {"started": False}
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
+
+    if queue.is_rendering:
+        pass
+    else:
+        interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+        queue.renders = F("renders") + 1
+        queue.is_rendering = True
+        await PeriodicTask.objects.acreate(
+            interval=interval,
+            name=f"Render {queue.renders} in {queue.name}",
+            task="send_queue",
+            one_off=True,
+            args=json.dumps([queue.pk]),
+            expires=queue.date + timedelta(seconds=10)
+        )
+
     return {"started": user.is_started, "queue_member": not created}
 
 
