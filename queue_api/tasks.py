@@ -20,6 +20,7 @@ def queue_notif(queue_id):
 
 @shared_task(name="render_queue")
 def render_queue(queue_id, private):
+    print('Lol')
     queue = Queue.objects.get(pk=queue_id)
     queue.is_rendering = False
     queue.save()

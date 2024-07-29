@@ -15,7 +15,7 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 import json
 import re
-import tasks
+from queue_api import tasks
 
 
 async def get_bot_name(bot):
@@ -186,7 +186,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
         # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
         queue.renders = F("renders") + 1
         queue.is_rendering = True
-        tasks.render_queue.delay(queue.pk, False)
+        tasks.render_queue.delay(queue.pk, False, expires=1)
         await queue.asave()
 
         # await PeriodicTask.objects.acreate(
@@ -245,7 +245,7 @@ async def delete_queue_member(queue_member_id: str):
             # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.renders = F("renders") + 1
             queue.is_rendering = True
-            tasks.render_queue.delay(queue.pk, False)
+            tasks.render_queue.delay(queue.pk, False, expires=1)
             await queue.asave()
         await queue_member.adelete()
         return 'Correct'
@@ -256,6 +256,13 @@ async def delete_queue_member(queue_member_id: str):
 async def delete_queue_member_by_id(queue_id: int, tg_id: int):
     try:
         queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
+        if not queue.is_rendering:
+            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+            queue.renders = F("renders") + 1
+            queue.is_rendering = True
+            tasks.render_queue.delay(queue.pk, False, expires=1)
+            await queue.asave()
+
         await queue_member.adelete()
         return 'Correct'
     except Exception:
