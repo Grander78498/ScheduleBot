@@ -818,17 +818,9 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
     else:
-        try:
-            group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
-            builder = InlineKeyboardBuilder()
-            builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
-            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
-            builder.adjust(1)
-            await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        except Exception as ex:
-            print("Скорочстрелы")
-    # передаётся callback_data.queueID, call.from_user.id Это id очереди и id нажавшего
+        # Здесь был render_queue
+        pass
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)

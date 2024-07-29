@@ -15,6 +15,7 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 import json
 import re
+import tasks
 
 
 async def get_bot_name(bot):
@@ -181,20 +182,21 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
         return {"started": False}
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
 
-    if queue.is_rendering:
-        pass
-    else:
-        interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+    if not queue.is_rendering:
+        # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
         queue.renders = F("renders") + 1
         queue.is_rendering = True
-        await PeriodicTask.objects.acreate(
-            interval=interval,
-            name=f"Render {queue.renders} in {queue.name}",
-            task="send_queue",
-            one_off=True,
-            args=json.dumps([queue.pk]),
-            expires=queue.date + timedelta(seconds=10)
-        )
+        tasks.render_queue.delay(queue.pk, False)
+        await queue.asave()
+
+        # await PeriodicTask.objects.acreate(
+        #     interval=interval,
+        #     name=f"Render {queue.renders} in {queue.name}",
+        #     task="send_queue",
+        #     one_off=True,
+        #     args=json.dumps([queue.pk]),
+        #     expires=queue.date + timedelta(seconds=10)
+        # )
 
     return {"started": user.is_started, "queue_member": not created}
 
@@ -238,6 +240,13 @@ async def delete_queue(queue_id: int):
 async def delete_queue_member(queue_member_id: str):
     try:
         queue_member = await QueueMember.objects.aget(pk=int(queue_member_id))
+        queue = await Queue.objects.aget(pk=queue_member.queue_id)
+        if not queue.is_rendering:
+            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+            queue.renders = F("renders") + 1
+            queue.is_rendering = True
+            tasks.render_queue.delay(queue.pk, False)
+            await queue.asave()
         await queue_member.adelete()
         return 'Correct'
     except Exception:
@@ -369,7 +378,10 @@ async def handle_request(first_member_id: int, second_member_id: int, first_mess
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
-    if not settings.DEBUG:
+    """
+    УБРАТЬ ОТСЮДА TRUE
+    """
+    if True or not settings.DEBUG:
         pass
     else:
         await asyncio.sleep(10)
