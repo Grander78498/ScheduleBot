@@ -43,9 +43,18 @@ async def create_queue_tasks(queue_id: int, group_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     if not settings.DEBUG:
-        clocked, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
+        clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
+        clocked_notif, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date - timedelta(hours=1))
         await PeriodicTask.objects.acreate(
-            clocked=clocked,
+            clocked=clocked_notif,
+            name=f"Notification of queue {queue.message}. Created in {group.name}",
+            task="queue_notif",
+            one_off=True,
+            args=json.dumps([queue.pk]),
+            expires=queue.date - timedelta(hours=1) + timedelta(seconds=10)
+        )
+        await PeriodicTask.objects.acreate(
+            clocked=clocked_queue,
             name=f"Queue {queue.message}. Created in {group.name}",
             task="send_queue",
             one_off=True,
