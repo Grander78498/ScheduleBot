@@ -12,7 +12,7 @@ def send_queue(queue_id):
 
 
 @shared_task(name="queue_notif")
-def send_queue(queue_id):
+def queue_notif(queue_id):
     queue = Queue.objects.get(pk=queue_id)
     group = TelegramGroup.objects.get(pk=queue.group_id)
     async_to_sync(queue_notif_send)(queue.id, group.thread_id, group.tg_id, queue.message)
