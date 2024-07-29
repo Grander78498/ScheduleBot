@@ -191,7 +191,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
 
         await PeriodicTask.objects.acreate(
             interval=interval,
-            name=f"Render {queue.renders} in {queue.name}",
+            name=f"Render {queue.renders} in {queue.message}",
             task="render_queue",
             one_off=True,
             args=json.dumps([queue.pk, False]),
@@ -250,7 +250,7 @@ async def delete_queue_member(queue_member_id: str):
 
             await PeriodicTask.objects.acreate(
                 interval=interval,
-                name=f"Render {queue.renders} in {queue.name}",
+                name=f"Render {queue.renders} in {queue.message}",
                 task="render_queue",
                 one_off=True,
                 args=json.dumps([queue.pk, True]),
@@ -275,7 +275,7 @@ async def delete_queue_member_by_id(queue_id: int, tg_id: int):
 
             await PeriodicTask.objects.acreate(
                 interval=interval,
-                name=f"Render {queue.renders} in {queue.name}",
+                name=f"Render {queue.renders} in {queue.message}",
                 task="render_queue",
                 one_off=True,
                 args=json.dumps([queue.pk, False]),
