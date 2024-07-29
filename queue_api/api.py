@@ -183,20 +183,20 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
 
     if not queue.is_rendering:
-        # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+        interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
         queue.renders = F("renders") + 1
         queue.is_rendering = True
-        tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+        # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
         await queue.asave()
 
-        # await PeriodicTask.objects.acreate(
-        #     interval=interval,
-        #     name=f"Render {queue.renders} in {queue.name}",
-        #     task="send_queue",
-        #     one_off=True,
-        #     args=json.dumps([queue.pk]),
-        #     expires=queue.date + timedelta(seconds=10)
-        # )
+        await PeriodicTask.objects.acreate(
+            interval=interval,
+            name=f"Render {queue.renders} in {queue.name}",
+            task="render_queue",
+            one_off=True,
+            args=json.dumps([queue.pk, False]),
+            expires=timezone.now() + timedelta(seconds=5)
+        )
 
     return {"started": user.is_started, "queue_member": not created}
 
@@ -242,11 +242,20 @@ async def delete_queue_member(queue_member_id: str):
         queue_member = await QueueMember.objects.aget(pk=int(queue_member_id))
         queue = await Queue.objects.aget(pk=queue_member.queue_id)
         if not queue.is_rendering:
-            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+            interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.renders = F("renders") + 1
             queue.is_rendering = True
-            tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
             await queue.asave()
+
+            await PeriodicTask.objects.acreate(
+                interval=interval,
+                name=f"Render {queue.renders} in {queue.name}",
+                task="render_queue",
+                one_off=True,
+                args=json.dumps([queue.pk, True]),
+                expires=timezone.now() + timedelta(seconds=5)
+            )
         await queue_member.adelete()
         return 'Correct'
     except Exception:
@@ -256,13 +265,22 @@ async def delete_queue_member(queue_member_id: str):
 async def delete_queue_member_by_id(queue_id: int, tg_id: int):
     try:
         queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
-        queue = await Queue.objects.aget(pk=queue_member.queue_id)
+        queue = await Queue.objects.aget(pk=queue_id)
         if not queue.is_rendering:
-            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
+            interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.renders = F("renders") + 1
             queue.is_rendering = True
-            tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
             await queue.asave()
+
+            await PeriodicTask.objects.acreate(
+                interval=interval,
+                name=f"Render {queue.renders} in {queue.name}",
+                task="render_queue",
+                one_off=True,
+                args=json.dumps([queue.pk, False]),
+                expires=timezone.now() + timedelta(seconds=5)
+            )
 
         await queue_member.adelete()
         return 'Correct'
