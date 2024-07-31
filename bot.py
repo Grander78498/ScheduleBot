@@ -8,8 +8,9 @@ from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
-from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, CommandStart
 from aiogram.types import ChatMemberUpdated
+
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
@@ -19,6 +20,7 @@ from config import API_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
+
 
 
 dp = Dispatcher()
@@ -162,10 +164,8 @@ async def change_topic(message: types.Message):
 
 
 
-
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message) -> None:
-    if message.chat.type == "group" or message.chat.type == "supergroup":
+async def cmd_startgroup(message: types.Message) -> None:
+    if message.chat.type == "supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
         names = []
@@ -177,7 +177,12 @@ async def cmd_start(message: types.Message) -> None:
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
             "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
-    elif message.chat.type == "private":
+
+
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message) -> None:
+    if message.chat.type == "private":
         if len(str(message.text).split())>1:
             queueID = int(str(message.text).split()[1])
             await api.save_user(message.chat.id, message.from_user.full_name)
@@ -199,9 +204,12 @@ async def cmd_start(message: types.Message) -> None:
             await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split())==1:
             builder_add = InlineKeyboardBuilder()
-            builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages".format(await api.get_bot_name(bot)))
+            builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
+            builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
+    else:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
 @dp.message(Command("change_tz"))
@@ -216,8 +224,12 @@ async def user_blocked_bot(event: ChatMemberUpdated):
     await api.update_started(event.from_user.id, event.from_user.full_name, False)
 
 
+
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
+    if event.chat.type == "group" or event.chat.type == "supergroup":
+        print("AAAAAAAAAAAA")
+        print(event.from_user)
     await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
@@ -821,6 +833,10 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
         # Здесь был render_queue
         pass
 
+@dp.message(F.new_chat_member)
+async def bot_add_to_group(message: types.Message):
+    if (await bot.get_me()).id==message.new_chat_member['id']:
+        await cmd_startgroup(message)
 
 async def main():
     logging.basicConfig(level=logging.INFO)
