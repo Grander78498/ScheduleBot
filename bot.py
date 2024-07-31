@@ -109,12 +109,12 @@ class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
     queue_id: int
 
 
-class QueueSelectCallback(CallbackData, prefix="queueSelect"):
+class QueueSelectCallback(CallbackData, prefix="qs"):
     queueID: int
     delete_message_id: int
     queueName: str
 
-class QueueSelectForSwapCallback(CallbackData, prefix="SwapqueueSelect"):
+class QueueSelectForSwapCallback(CallbackData, prefix="qss"):
     queueID: int
     queueName: str
 
@@ -221,7 +221,7 @@ async def user_blocked_bot(event: ChatMemberUpdated):
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
     if event.chat.type == "group" or event.chat.type == "supergroup":
-    await api.update_started(event.from_user.id, event.from_user.full_name, True)
+        await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
 
@@ -657,8 +657,15 @@ async def echo(message: Message, state: FSMContext) -> None:
     st = await state.get_state()
     if message.chat.type == "private":
         if st == States.text:
-            await state.update_data(text=message.text)
-            await short_cut(message, state)
+            res = api.check_text(message.text, 48)
+            if res['status'] == 'OK':
+                await state.update_data(text=message.text)
+                await short_cut(message, state)
+            else:
+                a = await message.answer(res['message'])
+                await asyncio.sleep(10)
+                await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == States.swap:
             await send_swap_request(message, message.text, message.chat.id, state)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
@@ -679,15 +686,22 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await state.clear()
             await message.answer(res["message"])
         elif st == States.renameQueue:
-            data = await state.get_data()
-            await api.rename_queue(data["renameQueue"], message.text)
-            # Здесь был render queue
-            builder = InlineKeyboardBuilder()
-            builder.button(text="Создать очередь", callback_data="add")
-            builder.button(text="Вывести существующие очереди", callback_data="print")
-            builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-            builder.adjust(1)
-            await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
+            res = api.check_text(message.text, 48)
+            if res['status'] == 'OK':
+                data = await state.get_data()
+                await api.rename_queue(data["renameQueue"], message.text)
+                # Здесь был render queue
+                builder = InlineKeyboardBuilder()
+                builder.button(text="Создать очередь", callback_data="add")
+                builder.button(text="Вывести существующие очереди", callback_data="print")
+                builder.button(text="Запросить перемещение в очереди", callback_data="swap")
+                builder.adjust(1)
+                await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
+            else:
+                a = await message.answer(res['message'])
+                await asyncio.sleep(10)
+                await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
         elif st == States.deleteQueueMember:
             data = await state.get_data()
