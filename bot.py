@@ -578,8 +578,6 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                data['text'], date, notif_date))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
-    await state.clear()
-
 
 
 
