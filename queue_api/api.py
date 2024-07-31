@@ -185,7 +185,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
 
         # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
         queue.is_rendering = True
-        task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
+        task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
         await queue.asave()
 
         # await PeriodicTask.objects.acreate(
@@ -245,7 +245,7 @@ async def delete_queue_member(queue_member_id: str):
 
             # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.is_rendering = True
-            task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
             await queue.asave()
 
             # await PeriodicTask.objects.acreate(
@@ -271,7 +271,7 @@ async def delete_queue_member_by_id(queue_id: int, tg_id: int):
 
             # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.is_rendering = True
-            task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
             await queue.asave()
 
             # await PeriodicTask.objects.acreate(
