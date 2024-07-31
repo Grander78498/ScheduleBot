@@ -5,7 +5,6 @@
 
 import asyncio
 
-import bot
 from .models import *
 from datetime import datetime, timedelta
 from django_celery_beat.models import PeriodicTask, ClockedSchedule, IntervalSchedule, SECONDS
@@ -15,7 +14,6 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 import json
 import re
-from queue_api import tasks
 
 
 async def get_bot_name(bot):
@@ -182,21 +180,22 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
         return {"started": False}
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
 
-    if not queue.is_rendering:
-        interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-        queue.renders = F("renders") + 1
+    if created and not queue.is_rendering:
+        from queue_api.tasks import task_render_queue
+
+        # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
         queue.is_rendering = True
-        # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+        task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
         await queue.asave()
 
-        await PeriodicTask.objects.acreate(
-            interval=interval,
-            name=f"Render {queue.renders} in {queue.message}",
-            task="render_queue",
-            one_off=True,
-            args=json.dumps([queue.pk, False]),
-            expires=timezone.now() + timedelta(seconds=5)
-        )
+        # await PeriodicTask.objects.acreate(
+        #     interval=interval,
+        #     name=f"Render {queue.renders} in {queue.message}",
+        #     task="render_queue",
+        #     one_off=True,
+        #     args=json.dumps([queue.pk, False]),
+        #     expires=timezone.now() + timedelta(seconds=5)
+        # )
 
     return {"started": user.is_started, "queue_member": not created}
 
@@ -242,20 +241,21 @@ async def delete_queue_member(queue_member_id: str):
         queue_member = await QueueMember.objects.aget(pk=int(queue_member_id))
         queue = await Queue.objects.aget(pk=queue_member.queue_id)
         if not queue.is_rendering:
-            interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-            queue.renders = F("renders") + 1
+            from queue_api.tasks import task_render_queue
+
+            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.is_rendering = True
-            # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
             await queue.asave()
 
-            await PeriodicTask.objects.acreate(
-                interval=interval,
-                name=f"Render {queue.renders} in {queue.message}",
-                task="render_queue",
-                one_off=True,
-                args=json.dumps([queue.pk, True]),
-                expires=timezone.now() + timedelta(seconds=5)
-            )
+            # await PeriodicTask.objects.acreate(
+            #     interval=interval,
+            #     name=f"Render {queue.renders} in {queue.message}",
+            #     task="render_queue",
+            #     one_off=True,
+            #     args=json.dumps([queue.pk, True]),
+            #     expires=timezone.now() + timedelta(seconds=5)
+            # )
         await queue_member.adelete()
         return 'Correct'
     except Exception:
@@ -267,20 +267,21 @@ async def delete_queue_member_by_id(queue_id: int, tg_id: int):
         queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
         queue = await Queue.objects.aget(pk=queue_id)
         if not queue.is_rendering:
-            interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-            queue.renders = F("renders") + 1
+            from queue_api.tasks import task_render_queue
+
+            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
             queue.is_rendering = True
-            # tasks.render_queue.apply_async(args=(queue.pk, False), countdown=1)
+            task_render_queue.apply_async(args=(queue.pk, False), countdown=1)
             await queue.asave()
 
-            await PeriodicTask.objects.acreate(
-                interval=interval,
-                name=f"Render {queue.renders} in {queue.message}",
-                task="render_queue",
-                one_off=True,
-                args=json.dumps([queue.pk, False]),
-                expires=timezone.now() + timedelta(seconds=5)
-            )
+            # await PeriodicTask.objects.acreate(
+            #     interval=interval,
+            #     name=f"Render {queue.renders} in {queue.message}",
+            #     task="render_queue",
+            #     one_off=True,
+            #     args=json.dumps([queue.pk, False]),
+            #     expires=timezone.now() + timedelta(seconds=5)
+            # )
 
         await queue_member.adelete()
         return 'Correct'
@@ -410,8 +411,9 @@ async def add_request_timer(first_id: int, second_id: int, message1_id: int, mes
     if True or not settings.DEBUG:
         pass
     else:
+        from bot import edit_request_message
         await asyncio.sleep(10)
-        await bot.edit_request_message(first_id, second_id, message1_id, message2_id, queue_id)
+        await edit_request_message(first_id, second_id, message1_id, message2_id, queue_id)
 
 
 async def remove_request(first_id: int, second_id: int, queue_id: int):

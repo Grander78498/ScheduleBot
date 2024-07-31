@@ -35,7 +35,6 @@ class Queue(models.Model):
     creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, related_name='creator')
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
     message_id = models.BigIntegerField(null=True)
-    renders = models.BigIntegerField(default=0)
     is_rendering = models.BooleanField(default=False)
 
     def __str__(self):
