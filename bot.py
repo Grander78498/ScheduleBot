@@ -201,7 +201,7 @@ async def cmd_start(message: types.Message) -> None:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages".format(await api.get_bot_name(bot)))
             await api.save_user(message.chat.id, message.from_user.full_name)
-        await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
+            await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
 
 
 @dp.message(Command("change_tz"))
