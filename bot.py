@@ -55,6 +55,7 @@ class States(StatesGroup):
     month = State()
     day = State()
     hm = State()
+    sec = State()
     swap = State()
     tz = State()
 
@@ -97,6 +98,8 @@ class QueueIDCallback(CallbackData, prefix="queueID"):
 class RemoveMyself(CallbackData, prefix="RemoveMyself"):
     queueID: int
 
+class FindMyself(CallbackData, prefix="FindMyself"):
+    queueID: int
 
 class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
     first_user_id: int
@@ -218,8 +221,6 @@ async def user_blocked_bot(event: ChatMemberUpdated):
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
     if event.chat.type == "group" or event.chat.type == "supergroup":
-        print("AAAAAAAAAAAA")
-        print(event.from_user)
     await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
@@ -604,6 +605,7 @@ async def now_time(call: CallbackQuery, state: FSMContext):
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
     await state.update_data(hm="{:02d}:{:02d}".format(now.hour, now.minute))
+    await state.update_data(sec=now.second)
     await putInDb(call.message, state)
     await call.answer()
 
@@ -722,6 +724,7 @@ async def queue_send(queue_id, thread_id, group_id, message):
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
     builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
     builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
+    builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
     builder.adjust(1)
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
                                 reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
@@ -752,6 +755,7 @@ async def render_queue(queue_id: int, private: bool):
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
+        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
         builder.adjust(1)
         await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
                                     reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
@@ -784,6 +788,16 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
     # Здесь был render_queue
+
+@dp.callback_query(FindMyself.filter(F.queueID != 0))
+async def get_number(call: CallbackQuery, callback_data: FindMyself):
+    try:
+        member_id = await api.get_queue_member_id(callback_data.queueID, call.from_user.id)
+        result = await api.get_queue_position(member_id)
+        await call.answer("Ваше место в очереди - {}".format(result))
+    except Exception as e:
+        await call.answer("Еблан, а в очередь встать не судьба??????")
+        
 
 
 @dp.message(F.new_chat_member)
