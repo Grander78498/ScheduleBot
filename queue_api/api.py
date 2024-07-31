@@ -111,7 +111,7 @@ def print_date_diff(date1, date2):
                     seconds_ending = "у"
                 elif seconds % 10 in range(2, 5) and seconds not in range(12, 15):
                     seconds_ending = "ы"
-                return f"{minutes} минут {ending} и {seconds} секунд{seconds_ending}"
+                return f"{minutes} минут{ending} и {seconds} секунд{seconds_ending}"
 
             return f"{minutes} минут{ending}"
         elif 3600 <= diff.seconds < 24 * 3600:
@@ -171,9 +171,14 @@ async def add_queue(data_dict):
         "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
     queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
+    time_diff = queue.date - timezone.now()
+    if time_diff >= timedelta(hours=2):
+        queue_notif_date = queue.date - timedelta(hours=1)
+    else:
+        queue_notif_date = queue.date - 0.5 * time_diff
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            print_date_diff(timezone.now(), date), queue.pk)
+            print_date_diff(timezone.now(), date), queue.pk, print_date_diff(timezone.now(), queue_notif_date))
 
 
 def check_time(time, year, month, day):
@@ -309,13 +314,13 @@ async def print_all_queues(user_id: int, queue_list: list[Queue], is_admin: bool
 
 
 async def get_creator_queues(user_id: int):
-    creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id)]
+    creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
     return await print_all_queues(user_id, creator_queues, True)
 
 
 async def get_user_queues(tg_id: int):
     user = await TelegramUser.objects.aget(pk=tg_id)
-    user_queues = [queue async for queue in user.queue.all()]
+    user_queues = [queue async for queue in user.queue.all().order_by('date')]
     return await print_all_queues(tg_id, user_queues, False)
 
 async def remove_first(queue_id: int):

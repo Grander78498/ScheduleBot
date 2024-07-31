@@ -1,5 +1,7 @@
 from celery import shared_task
 from asgiref.sync import async_to_sync
+from django.utils import timezone
+from queue_api.api import print_date_diff
 import bot
 import asyncio
 from .models import *
@@ -18,7 +20,11 @@ def task_send_queue(queue_id):
 def task_queue_notif(queue_id):
     queue = Queue.objects.get(pk=queue_id)
     group = TelegramGroup.objects.get(pk=queue.group_id)
-    celery_event_loop.run_until_complete(bot.queue_notif_send(queue.id, group.thread_id, group.tg_id, queue.message))
+    message = \
+    f"""НАПОМИНАНИЕ!!!
+    Очередь {queue.message} будет отправлена через {print_date_diff(timezone.now(), queue.date)}
+    """
+    celery_event_loop.run_until_complete(bot.queue_notif_send(queue.id, group.thread_id, group.tg_id, message))
 
 
 @shared_task(name="render_queue")

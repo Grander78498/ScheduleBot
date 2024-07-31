@@ -565,7 +565,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         data["creator_id"] = message.chat.id
     except Exception:
         print("Error")
-    thread_id, date, queue_id = await api.add_queue(data)
+    thread_id, date, queue_id, notif_date = await api.add_queue(data)
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать очередь", callback_data="add")
     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -573,10 +573,11 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
     mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                           text="Очередь {} будет создана через {}. За час до этого будет отправлено напоминание".format(
-                               data['text'], date))
+                           text="Очередь {} будет создана через {}. За {} до этого будет отправлено напоминание".format(
+                               data['text'], date, notif_date))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
+    await state.clear()
 
 
 
