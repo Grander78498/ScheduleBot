@@ -25,3 +25,9 @@ def task_queue_notif(queue_id):
 def task_render_queue(queue_id, private):
     Queue.objects.filter(pk=queue_id).update(is_rendering=False)
     celery_event_loop.run_until_complete(bot.render_queue(queue_id, private))
+
+
+@shared_task(name="swap_delete")
+def task_swap_delete(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
+    celery_event_loop.run_until_complete(bot.edit_request_message(first_id, second_id,
+                                                                  message1_id, message2_id, queue_id))

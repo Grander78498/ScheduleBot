@@ -31,7 +31,6 @@ async def add_admin(group_id: int, admins: list[int], names: list[str], group_na
             print(e)
 
 
-
 async def check_admin(admin_id: int):
     groups = []
     async for group in TelegramGroup.objects.filter(telegramuser=admin_id, groupmember__is_admin=True):
@@ -42,20 +41,27 @@ async def check_admin(admin_id: int):
 async def create_queue_tasks(queue_id: int, group_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
+    time_diff = queue.date - timezone.now()
+    if time_diff >= timedelta(hours=2):
+        queue_notif_date = queue.date - timedelta(hours=1)
+    else:
+        queue_notif_date = queue.date - 0.5 * time_diff
+
     if not settings.DEBUG:
         clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
-        clocked_notif, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date - timedelta(hours=1))
-        await PeriodicTask.objects.acreate(
-            clocked=clocked_notif,
-            name=f"Notification of queue {queue.message}. Created in {group.name}",
-            task="queue_notif",
-            one_off=True,
-            args=json.dumps([queue.pk]),
-            expires=queue.date - timedelta(hours=1) + timedelta(seconds=10)
-        )
+        clocked_notif, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue_notif_date)
+        if time_diff >= timedelta(minutes=2):
+            await PeriodicTask.objects.acreate(
+                clocked=clocked_notif,
+                name=f"Notification of queue {queue.message} ({queue.pk}). Created in {group.name}",
+                task="queue_notif",
+                one_off=True,
+                args=json.dumps([queue.pk]),
+                expires=queue_notif_date + timedelta(seconds=10)
+            )
         await PeriodicTask.objects.acreate(
             clocked=clocked_queue,
-            name=f"Queue {queue.message}. Created in {group.name}",
+            name=f"Queue {queue.message} ({queue.pk}). Created in {group.name}",
             task="send_queue",
             one_off=True,
             args=json.dumps([queue.pk]),
@@ -66,6 +72,7 @@ async def create_queue_tasks(queue_id: int, group_id: int):
 
         # if queue.date > timezone.now():
         #     await asyncio.sleep((queue.date - timezone.now()).seconds + 24 * 3600 * (queue.date - timezone.now()).seconds)
+        print(queue_notif_date)
         await asyncio.sleep(15)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
         await asyncio.sleep(5)
@@ -90,21 +97,39 @@ def print_date_diff(date1, date2):
 
             return f"{diff.seconds} секунд{ending}"
         elif 60 <= diff.seconds < 3600:
-            minutes = (diff.seconds + 59) // 60
+            minutes = diff.seconds // 60
             ending = ""
             if minutes % 10 == 1 and minutes != 11:
                 ending = "у"
             elif minutes % 10 in range(2, 5) and minutes not in range(12, 15):
                 ending = "ы"
 
+            if diff.seconds < 600:
+                seconds = diff.seconds % 60
+                seconds_ending = ""
+                if seconds % 10 == 1 and seconds != 11:
+                    seconds_ending = "у"
+                elif seconds % 10 in range(2, 5) and seconds not in range(12, 15):
+                    seconds_ending = "ы"
+                return f"{minutes} минут {ending} и {seconds} секунд{seconds_ending}"
+
             return f"{minutes} минут{ending}"
         elif 3600 <= diff.seconds < 24 * 3600:
-            hours = (diff.seconds + (3600 - 1)) // 3600
+            hours = diff.seconds // 3600
             ending = "ов"
             if hours % 10 == 1 and hours != 11:
                 ending = ""
             elif hours % 10 in range(2, 5) and hours not in range(12, 15):
                 ending = "а"
+
+            if diff.seconds < 3600 * 60:
+                minutes = (diff.seconds // 60) % 60
+                minutes_ending = ""
+                if minutes % 10 == 1 and minutes != 11:
+                    minutes_ending = "у"
+                elif minutes % 10 in range(2, 5) and minutes not in range(12, 15):
+                    minutes_ending = "ы"
+                return f"{hours} час{ending} и {minutes} минут{minutes_ending}"
 
             return f"{hours} час{ending}"
     elif 1 <= diff.days < 2:
@@ -170,6 +195,20 @@ def check_timezone(tz):
     return bool(re.fullmatch(r'\-?\d', tz))
 
 
+async def send_render_task(queue_id: int, private: bool):
+    if not settings.DEBUG:
+        queue = await Queue.objects.aget(pk=queue_id)
+        if not queue.is_rendering:
+            from queue_api.tasks import task_render_queue
+
+            queue.is_rendering = True
+            task_render_queue.apply_async(args=(queue.pk, private), countdown=0.75)
+            await queue.asave()
+    else:
+        from bot import render_queue
+        await render_queue(queue_id, private)
+
+
 async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     try:
         queue = await Queue.objects.aget(pk=queue_id)
@@ -180,22 +219,8 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
         return {"started": False}
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
 
-    if created and not queue.is_rendering:
-        from queue_api.tasks import task_render_queue
-
-        # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-        queue.is_rendering = True
-        task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
-        await queue.asave()
-
-        # await PeriodicTask.objects.acreate(
-        #     interval=interval,
-        #     name=f"Render {queue.renders} in {queue.message}",
-        #     task="render_queue",
-        #     one_off=True,
-        #     args=json.dumps([queue.pk, False]),
-        #     expires=timezone.now() + timedelta(seconds=5)
-        # )
+    if created:
+        await send_render_task(queue_id, False)
 
     return {"started": user.is_started, "queue_member": not created}
 
@@ -240,23 +265,8 @@ async def delete_queue_member(queue_member_id: str):
     try:
         queue_member = await QueueMember.objects.aget(pk=int(queue_member_id))
         queue = await Queue.objects.aget(pk=queue_member.queue_id)
-        if not queue.is_rendering:
-            from queue_api.tasks import task_render_queue
-
-            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-            queue.is_rendering = True
-            task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
-            await queue.asave()
-
-            # await PeriodicTask.objects.acreate(
-            #     interval=interval,
-            #     name=f"Render {queue.renders} in {queue.message}",
-            #     task="render_queue",
-            #     one_off=True,
-            #     args=json.dumps([queue.pk, True]),
-            #     expires=timezone.now() + timedelta(seconds=5)
-            # )
         await queue_member.adelete()
+        await send_render_task(queue.pk, False)
         return 'Correct'
     except Exception:
         return 'Incorrect'
@@ -265,25 +275,9 @@ async def delete_queue_member(queue_member_id: str):
 async def delete_queue_member_by_id(queue_id: int, tg_id: int):
     try:
         queue_member = await QueueMember.objects.aget(queue_id=queue_id, user_id=tg_id)
-        queue = await Queue.objects.aget(pk=queue_id)
-        if not queue.is_rendering:
-            from queue_api.tasks import task_render_queue
-
-            # interval, _ = await IntervalSchedule.objects.aget_or_create(every=1, period=SECONDS)
-            queue.is_rendering = True
-            task_render_queue.apply_async(args=(queue.pk, False), countdown=0.75)
-            await queue.asave()
-
-            # await PeriodicTask.objects.acreate(
-            #     interval=interval,
-            #     name=f"Render {queue.renders} in {queue.message}",
-            #     task="render_queue",
-            #     one_off=True,
-            #     args=json.dumps([queue.pk, False]),
-            #     expires=timezone.now() + timedelta(seconds=5)
-            # )
 
         await queue_member.adelete()
+        await send_render_task(queue_id, False)
         return 'Correct'
     except Exception:
         return 'Incorrect'
@@ -291,6 +285,7 @@ async def delete_queue_member_by_id(queue_id: int, tg_id: int):
 
 async def rename_queue(queue_id: int, message: str):
     await Queue.objects.filter(pk=queue_id).aupdate(message=message)
+    await send_render_task(queue_id, False)
 
 
 async def print_all_queues(user_id: int, queue_list: list[Queue], is_admin: bool):
@@ -328,6 +323,7 @@ async def remove_first(queue_id: int):
         queue = await Queue.objects.aget(pk=queue_id)
         first_user = await queue.queuemember_set.afirst()
         await first_user.adelete()
+        await send_render_task(queue_id, False)
         return True
     except Exception:
         return False
@@ -376,6 +372,7 @@ async def swap_places(first_member_id: int, second_member_id: int):
     first.pk, second.pk = second.pk, first.pk
     await first.asave()
     await second.asave()
+    await send_render_task(first.queue_id, False)
 
 
 async def update_started(tg_id: int, full_name: str, started: bool):
@@ -405,11 +402,9 @@ async def handle_request(first_member_id: int, second_member_id: int, first_mess
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
-    """
-    УБРАТЬ ОТСЮДА TRUE
-    """
-    if True or not settings.DEBUG:
-        pass
+    if not settings.DEBUG:
+        from tasks import task_swap_delete
+        task_swap_delete.apply_async(args=(first_id, second_id, message1_id, message2_id, queue_id), countdown=300)
     else:
         from bot import edit_request_message
         await asyncio.sleep(10)

@@ -187,17 +187,7 @@ async def cmd_start(message: types.Message) -> None:
             queueID = int(str(message.text).split()[1])
             await api.save_user(message.chat.id, message.from_user.full_name)
             _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
-            group_id, queue_message_id, queue = await api.print_queue(queueID, False)
-            try:
-                builder = InlineKeyboardBuilder()
-                builder.button(text="Встать в очередь",
-                                   callback_data=QueueIDCallback(queueID=queueID))
-                builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queueID))
-                builder.adjust(1)
-                await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
-                                            reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-            except Exception as _ex:
-                print(_ex)
+            # Здесь был render queue
             link = await api.get_queue_link(queueID)
             return_builder = InlineKeyboardBuilder()
             return_builder.button(text="Вернуться в группу", url=link)
@@ -294,17 +284,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был отклонён")
     else:
         await api.swap_places(callback_data.first_user_id, callback_data.second_user_id)
-        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueId, False)
-        try:
-            builder = InlineKeyboardBuilder()
-            builder.button(text="Встать в очередь",
-                           callback_data=QueueIDCallback(queueID=callback_data.queueId))
-            builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueId))
-            builder.adjust(1)
-            await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
-                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        except Exception as _ex:
-            print(_ex)
+        # Здесь был render queue
         await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await delete_request_messages(callback_data.message1_id, callback_data.message2_id,callback_data.first_tg_user_id ,call.from_user.id)
     deletable = await api.remove_all_in_requests(current_member_id)
@@ -444,15 +424,8 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
     res = await api.remove_first(callback_data.queueID)
     if not res:
         await call.answer("Данная очередь пуста")
-    else:
-        group_id, queue_message_id, queue = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
-        builder = InlineKeyboardBuilder()
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=callback_data.queueID))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=callback_data.queueID))
-        builder.adjust(1)
-        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-        await call.answer()
+    # Здесь был render queue
+    await call.answer()
 
 
 
@@ -705,16 +678,7 @@ async def echo(message: Message, state: FSMContext) -> None:
         elif st == States.renameQueue:
             data = await state.get_data()
             await api.rename_queue(data["renameQueue"], message.text)
-            group_id, queue_message_id, queue = await api.print_queue(data["renameQueue"], message.chat.type == "private")
-            try:
-                builder = InlineKeyboardBuilder()
-                builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=data["renameQueue"]))
-                builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=data["renameQueue"]))
-                builder.adjust(1)
-                await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
-                                            reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-            except Exception as _ex:
-                print(_ex)
+            # Здесь был render queue
             builder = InlineKeyboardBuilder()
             builder.button(text="Создать очередь", callback_data="add")
             builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -731,18 +695,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 case "Doesn't exist":
                     await message.answer('Введённой позиции в очереди нет')
                 case _:
-
-                    group_id, queue_message_id, queue = await api.print_queue(data["deleteQueueMember"], message.chat.type == "private")
-                    try:
-                        builder = InlineKeyboardBuilder()
-                        builder.button(text="Встать в очередь",
-                                       callback_data=QueueIDCallback(queueID=data["deleteQueueMember"]))
-                        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=data["deleteQueueMember"]))
-                        builder.adjust(1)
-                        await bot.edit_message_text(chat_id=group_id, message_id=queue_message_id, text=queue,
-                                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-                    except Exception as _ex:
-                        print(_ex)
+                    # Здесь был render queue
                     builder = InlineKeyboardBuilder()
                     builder.button(text="Создать очередь", callback_data="add")
                     builder.button(text="Вывести существующие очереди", callback_data="print")
@@ -829,9 +782,8 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     result = await api.delete_queue_member_by_id(callback_data.queueID, call.from_user.id)
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
-    else:
-        # Здесь был render_queue
-        pass
+    # Здесь был render_queue
+
 
 @dp.message(F.new_chat_member)
 async def bot_add_to_group(message: types.Message):
