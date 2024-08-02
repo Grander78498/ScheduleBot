@@ -221,7 +221,7 @@ async def user_blocked_bot(event: ChatMemberUpdated):
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
     if event.chat.type == "group" or event.chat.type == "supergroup":
-    await api.update_started(event.from_user.id, event.from_user.full_name, True)
+        await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
 
