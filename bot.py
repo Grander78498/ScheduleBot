@@ -451,19 +451,12 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 @dp.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
     group_id, message_id = await api.delete_queue(callback_data.queueID)
-    if message_id is not None:
-        try:
-            await bot.delete_message(chat_id=group_id, message_id=message_id)
-            await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
-        except:
-            await call.answer("Очередь перестала быть активной, но удалить сообщение не удалось так как оно старое")
-#    builder = InlineKeyboardBuilder()
-#    builder.button(text="Создать очередь", callback_data="add")
-#    builder.button(text="Вывести существующие очереди", callback_data="print")
-#    builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-#    builder.adjust(1)
-    await call.answer("Очередь удалена")
-#    await call.answer()
+    try:
+        await bot.delete_message(chat_id=group_id, message_id=message_id)
+        await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
+        await call.answer("Очередь удалена")
+    except Exception:
+        await call.answer("Очередь перестала быть активной, но удалить сообщение не удалось")
 
 
 @dp.callback_query(DayCallback.filter(F.day != 0))
