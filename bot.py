@@ -58,6 +58,7 @@ class States(StatesGroup):
     sec = State()
     swap = State()
     tz = State()
+    object_type = State()
 
 
 
@@ -143,13 +144,24 @@ class SwapCallback(CallbackData, prefix="swap"):
 
 
 @dp.message(Command("queue"))
-async def print_info(message: types.Message):
+async def print_info_queue(message: types.Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Создать очередь", callback_data="add")
-    builder.button(text="Вывести существующие очереди", callback_data="print")
+    builder.button(text="Создать очередь", callback_data="add_queue")
+    builder.button(text="Вывести существующие очереди", callback_data="print_queue")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
     builder.adjust(1)
     await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+
+
+
+@dp.message(Command("deadline"))
+async def print_info_deadline(message: types.Message):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Создать напоминание", callback_data="add_deadline")
+    builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+    builder.adjust(1)
+    await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+
 
 
 @dp.message(Command("change_topic"))
@@ -314,7 +326,28 @@ async def swap(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+@dp.callback_query(F.data.in_(['print_deadline']))
+async def printQueue(call: CallbackQuery, state: FSMContext):
+    await call.answer("Заглушка")
 
+
+
+@dp.callback_query(F.data.in_(['add_deadline']))
+async def add_deadline(call: CallbackQuery, state: FSMContext):
+    if call.message.chat.type == "private":
+        groups = await api.check_admin(call.message.chat.id)
+        if len(groups) == 0:
+            await call.answer("Ну создай, попробуй")
+            # Заглушка
+        else:
+            builder = InlineKeyboardBuilder()
+            await state.update_data(object_type="deadline")
+            for group in groups:
+                builder.button(text=group.name,
+                               callback_data=GroupSelectCallback(groupID=group.tg_id))
+            builder.adjust(1)
+            await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+    await call.answer()
 
 @dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
@@ -345,19 +378,20 @@ async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback,
     await call.answer()
 
 
-@dp.callback_query(F.data.in_(['add']))
-async def addNotification(call: CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data.in_(['add_queue']))
+async def add_queue(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
         groups = await api.check_admin(call.message.chat.id)
         if len(groups) == 0:
             builder = InlineKeyboardBuilder()
-            builder.button(text="Создать очередь", callback_data="add")
-            builder.button(text="Вывести существующие очереди", callback_data="print")
+            builder.button(text="Создать очередь", callback_data="add_queue")
+            builder.button(text="Вывести существующие очереди", callback_data="print_queue")
             builder.button(text="Запросить перемещение в очереди", callback_data="swap")
             builder.adjust(1)
             await call.message.answer("У тебя нет групп, где ты админ", reply_markup=builder.as_markup())
         else:
             builder = InlineKeyboardBuilder()
+            await state.update_data(object_type="queue")
             for group in groups:
                 builder.button(text=group.name,
                                callback_data=GroupSelectCallback(groupID=group.tg_id))
@@ -366,7 +400,7 @@ async def addNotification(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@dp.callback_query(F.data.in_(['print']))
+@dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
     if lenq==0:

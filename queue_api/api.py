@@ -182,7 +182,7 @@ async def create_queue_or_deadline(data_dict):
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    is_queue = data_dict["type"] == "queue"
+    is_queue = data_dict["object_type"] == "queue"
     if is_queue:
         queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
         object_id = queue.pk
