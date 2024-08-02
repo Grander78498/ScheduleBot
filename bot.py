@@ -574,8 +574,9 @@ async def putInDb(message: Message, state: FSMContext) -> None:
     builder.adjust(1)
     await message.answer("Очередь была создана", reply_markup=builder.as_markup())
     mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                           text="Очередь {} будет создана через {}. За {} до этого будет отправлено напоминание".format(
-                               data['text'], date, notif_date))
+                           text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
+                                 (" За {} до этого будет отправлено напоминание".format(notif_date)
+                                 if notif_date != "" else ""))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
 
@@ -669,7 +670,7 @@ async def echo(message: Message, state: FSMContext) -> None:
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == States.hm:
             data = await state.get_data()
-            t = api.check_time(message.text, data["year"], data["month"], data["day"])
+            t = await api.check_time(message.text, data["year"], data["month"], data["day"], message.from_user.id)
             match t:
                 case "TimeError":
                     await message.answer("Неправильно, попробуйте ещё раз")
@@ -809,13 +810,15 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
         await call.answer("Ваше место в очереди - {}".format(result))
     except Exception as e:
         await call.answer("Еблан, а в очередь встать не судьба??????")
-        
+
 
 
 @dp.message(F.new_chat_member)
 async def bot_add_to_group(message: types.Message):
     if (await bot.get_me()).id==message.new_chat_member['id']:
         await cmd_startgroup(message)
+
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)

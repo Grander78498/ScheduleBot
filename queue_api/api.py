@@ -78,7 +78,6 @@ async def create_queue_tasks(queue_id: int, group_id: int):
 
         # if queue.date > timezone.now():
         #     await asyncio.sleep((queue.date - timezone.now()).seconds + 24 * 3600 * (queue.date - timezone.now()).seconds)
-        print(queue_notif_date)
         await asyncio.sleep(15)
         await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
         await asyncio.sleep(5)
@@ -185,6 +184,10 @@ async def add_queue(data_dict):
     group = await TelegramGroup.objects.aget(pk=group_id)
     queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
     time_diff = queue.date - timezone.now()
+    if time_diff < timedelta(minutes=2):
+        return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
+                print_date_diff(timezone.now(), date), queue.pk, "")
+
     if time_diff >= timedelta(hours=2):
         queue_notif_date = queue.date - timedelta(hours=1)
     else:
@@ -194,16 +197,18 @@ async def add_queue(data_dict):
             print_date_diff(timezone.now(), date), queue.pk, print_date_diff(timezone.now(), queue_notif_date))
 
 
-def check_time(time, year, month, day):
+async def check_time(time, year, month, day, user_id):
     '''Функция для проверки корректности времени'''
     check_time_format = bool(re.fullmatch(r'(([01]\d)|(2[0-3])):[0-5]\d', time))
     if not check_time_format:
         return 'TimeError'
-    current_date = datetime.now()
+    user = await TelegramUser.objects.aget(pk=user_id)
+    tz = user.tz
+    current_date = timezone.now()
     given_date = datetime.strptime(
-        f'{day}.{month}.{year} {time}', '%d.%m.%Y %H:%M')
+        f'{day}.{month}.{year} {time}{tz}', '%d.%m.%Y %H:%M%z')
     # Здесь убрать true при нормальном запуске!!!
-    if True or (given_date - current_date).total_seconds() >= 2 * 3600:
+    if given_date >= current_date or (current_date - given_date).total_seconds() >= 60:
         return "It's okay it's fine"
     return "EarlyQueueError"
 
