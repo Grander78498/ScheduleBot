@@ -167,7 +167,7 @@ def print_date_diff(date1, date2):
             return f"{weeks} недел{week_ending} и {days} д{day_ending}"
 
 
-async def add_queue(data_dict):
+async def create_queue_or_deadline(data_dict):
     message = data_dict['text']
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
@@ -182,19 +182,25 @@ async def add_queue(data_dict):
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
-    time_diff = queue.date - timezone.now()
+    is_queue = data_dict["type"] == "queue"
+    if is_queue:
+        queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
+        object_id = queue.pk
+    else:
+        deadline = await Deadline.objects.acreate(message=message, date=date, creator=creator, group=group)
+        object_id = deadline.pk
+    time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-                print_date_diff(timezone.now(), date), queue.pk, "")
+                print_date_diff(timezone.now(), date), object_id, "")
 
     if time_diff >= timedelta(hours=2):
-        queue_notif_date = queue.date - timedelta(hours=1)
+        queue_notif_date = date - timedelta(hours=1)
     else:
-        queue_notif_date = queue.date - 0.5 * time_diff
+        queue_notif_date = date - 0.5 * time_diff
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            print_date_diff(timezone.now(), date), queue.pk, print_date_diff(timezone.now(), queue_notif_date))
+            print_date_diff(timezone.now(), date), object_id, print_date_diff(timezone.now(), queue_notif_date))
 
 
 async def check_time(time, year, month, day, user_id):

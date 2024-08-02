@@ -55,3 +55,14 @@ class SwapRequest(models.Model):
     second_member = models.ForeignKey('QueueMember', on_delete=models.CASCADE, related_name='second_member')
     first_message_id = models.BigIntegerField(null=True)
     second_message_id = models.BigIntegerField(null=True)
+
+
+class Deadline(models.Model):
+    message = models.CharField(max_length=512)
+    date = models.DateTimeField()
+    creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, related_name='deadline_creator')
+    group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE, related_name='deadline_group')
+    message_id = models.BigIntegerField(null=True)
+
+    def __str__(self):
+        return self.message
