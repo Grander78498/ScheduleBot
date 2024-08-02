@@ -16,6 +16,12 @@ import json
 import re
 
 
+def check_text(text: str, max_len):
+    if len(text.encode('utf-8')) >= max_len:
+        return {'status': 'NO', 'message': 'Насрал много байтов - повтори ввод названия'}
+    return {'status': 'OK'}
+
+
 async def get_bot_name(bot):
     return (await bot.get_me()).username
 
@@ -86,6 +92,9 @@ def print_date_diff(date1, date2):
     # от суток до двух = завтра
     # от двух суток до трёх = послезавтра
     # всё остальное - через недели и дни
+    if date2 < date1:
+        return '0 секунд'
+
     diff = date2 - date1
     if diff.days == 0:
         if diff.seconds < 60:
@@ -166,6 +175,10 @@ async def add_queue(data_dict):
     creator = await TelegramUser.objects.aget(pk=creator_id)
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
+    if 'sec' in data_dict:
+        date = datetime.strptime(
+        f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
+        "%Y-%m-%d %H:%M:%S%z")
     date = datetime.strptime(
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
@@ -234,14 +247,17 @@ async def print_queue(queue_id: int, private: bool):
     queue = await Queue.objects.aget(pk=queue_id)
     members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.message}\n"
-    res_string += "\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\n"
+    res_string += "__________________________\n".replace('_', '\_')
     for index, member in enumerate(members, 1):
-        user = await TelegramUser.objects.aget(pk=member.user_id)
-        res_string += (str(index) + '\. ')
-        res_string += f"{user.full_name}"
-        if private:
-            res_string += f"\(`{member.pk}`\)"
-        res_string += "\n"
+        if index == len(members) - 1 and index > 10:
+            print('.................\n'.replace('.', '\.'))
+        if index <= 8 or (index <= 10 and len(members) <= 10) or (index >= len(members) - 1 and index > 10):
+            user = await TelegramUser.objects.aget(pk=member.user_id)
+            res_string += (str(index) + '\. ')
+            res_string += f"{user.full_name[:32]}" + ("\.\.\." if len(user.full_name) > 32 else "")
+            if private:
+                res_string += f"\(`{member.pk}`\)"
+            res_string += "\n"
     return queue.group_id, queue.message_id, res_string
 
 
