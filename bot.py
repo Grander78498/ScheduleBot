@@ -191,9 +191,11 @@ async def cmd_startgroup(message: types.Message) -> None:
             name = admin.user.full_name
             d.append(userId)
             names.append(name)
+        builder_start = InlineKeyboardBuilder()
+        builder_start.button(text="АААААААААА", url="https://t.me/{}?start=sub{}".format(await api.get_bot_name(bot), message.chat.id))
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
+            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic", reply_markup=builder_start.as_markup())
 
 
 
@@ -201,14 +203,23 @@ async def cmd_startgroup(message: types.Message) -> None:
 async def cmd_start(message: types.Message) -> None:
     if message.chat.type == "private":
         if len(str(message.text).split())>1:
-            queueID = int(str(message.text).split()[1])
-            await api.save_user(message.chat.id, message.from_user.full_name)
-            _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
-            # Здесь был render queue
-            link = await api.get_queue_link(queueID)
-            return_builder = InlineKeyboardBuilder()
-            return_builder.button(text="Вернуться в группу", url=link)
-            await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
+            if str(message.text).split()[1].startswith("add_queue"):
+                queueID = int(str(message.text).split()[1][8:])
+                await api.save_user(message.chat.id, message.from_user.full_name)
+                _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
+                # Здесь был render queue
+                link = await api.get_queue_link(queueID)
+                return_builder = InlineKeyboardBuilder()
+                return_builder.button(text="Вернуться в группу", url=link)
+                await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
+            elif str(message.text).split()[1].startswith("sub"):
+                groupID = int(str(message.text).split()[1][3:])
+                await api.add_user_to_group(group_id=groupID, user_id=message.chat.id, user_fullname=message.from_user.full_name, group_name=None,thread_id=None)
+                await message.answer("Вы успешно продали свою душу")
+                # Здесь нужно вернуть на топик группы
+#                link = await api.get_queue_link(queueID)
+#                return_builder = InlineKeyboardBuilder()
+#                return_builder.button(text="Вернуться в группу", url=link)
         elif len(str(message.text).split())==1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
@@ -884,7 +895,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
                 pass
             await call.answer()
         else:
-            await call.answer(url="https://t.me/{}?start={}".format(await api.get_bot_name(bot), callback_data.queueID))
+            await call.answer(url="https://t.me/{}?start=queue_add{}".format(await api.get_bot_name(bot), callback_data.queueID))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))

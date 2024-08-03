@@ -28,12 +28,15 @@ async def get_bot_name(bot):
 
 async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
     for admin, name in zip(admins, names):
-        await add_user_to_group(group_id, group_name, thread_id, admin, name, True)
+        await add_user_to_group(group_id, admin, name, True, group_name=group_name, thread_id=thread_id)
 
 
-async def add_user_to_group(group_id: int, group_name: str, thread_id: int,
-                            user_id: int, user_fullname: str, is_admin: bool = False):
-    group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
+async def add_user_to_group(group_id: int,
+                            user_id: int, user_fullname: str, is_admin: bool = False, group_name = None, thread_id = None):
+    if group_name is None:
+        group = await TelegramGroup.objects.aget(tg_id=group_id)
+    else:
+        group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
     try:
         user, _ = await TelegramUser.objects.aget_or_create(tg_id=user_id, full_name=user_fullname)
         await user.groups.aadd(group, through_defaults={"is_admin": is_admin})
