@@ -213,6 +213,7 @@ async def check_time(time, year, month, day, user_id):
     current_date = timezone.now()
     given_date = datetime.strptime(
         f'{day}.{month}.{year} {time}{tz}', '%d.%m.%Y %H:%M%z')
+    print(f'{day}.{month}.{year} {time}{tz}')
     # Здесь убрать true при нормальном запуске!!!
     if given_date >= current_date or (current_date - given_date).total_seconds() >= 60:
         return "It's okay it's fine"

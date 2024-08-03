@@ -1,8 +1,9 @@
 import asyncio
 import logging
-import datetime
-
 import aiogram
+import datetime
+from dateutil.relativedelta import relativedelta
+
 
 from queue_api import api
 from aiogram import Bot, Dispatcher, types
@@ -212,7 +213,7 @@ async def cmd_start(message: types.Message) -> None:
             builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
-            await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n /queue", reply_markup=builder_add.as_markup())
+            await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline", reply_markup=builder_add.as_markup())
     else:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
@@ -556,7 +557,6 @@ async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMConte
         builder.adjust(3)
         remove = await state.get_data()
         remove = remove["RemoveMessageyear"] if "RemoveMessageyear" in remove else None
-        # r = 0
         ok = True
         if remove is not None and len(remove.reply_markup.inline_keyboard) == len(
                 builder.as_markup().inline_keyboard) and len(builder.as_markup().inline_keyboard[0]) == len(
@@ -595,15 +595,25 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         print("Error")
     thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
     builder = InlineKeyboardBuilder()
-    builder.button(text="Создать очередь", callback_data="add")
-    builder.button(text="Вывести существующие очереди", callback_data="print")
-    builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-    builder.adjust(1)
-    await message.answer("Очередь была создана", reply_markup=builder.as_markup())
-    mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                           text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
-                                 (" За {} до этого будет отправлено напоминание".format(notif_date)
-                                 if notif_date != "" else ""))
+    if data["object_type"]=="queue":
+        builder.button(text="Создать очередь", callback_data="add_queue")
+        builder.button(text="Вывести существующие очереди", callback_data="print_queue")
+        builder.button(text="Запросить перемещение в очереди", callback_data="swap")
+        builder.adjust(1)
+        await message.answer("Очередь была создана", reply_markup=builder.as_markup())
+        mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
+                               text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
+                                     (" За {} до этого будет отправлено напоминание".format(notif_date)
+                                     if notif_date != "" else ""))
+    else:
+        builder.button(text="Создать напоминание", callback_data="add_deadline")
+        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+        builder.adjust(1)
+        await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
+        mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
+                               text="Ваша смертная линия  {} будет наступит через {}.".format(data['text'], date, notif_date) +
+                                     (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(notif_date)
+                                     if notif_date != "" else ""))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
 
@@ -657,6 +667,7 @@ async def tomorrow(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
+
 @dp.callback_query(F.data.in_(['tomorrow']))
 async def tomorrow(call: CallbackQuery, state: FSMContext):
     now = datetime.datetime.now()+datetime.timedelta(days=1)
@@ -667,13 +678,65 @@ async def tomorrow(call: CallbackQuery, state: FSMContext):
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
+
+
+@dp.callback_query(F.data.in_(['week']))
+async def week(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()+datetime.timedelta(days=7)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
+
+
+@dp.callback_query(F.data.in_(['2week']))
+async def two_week(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.now()+datetime.timedelta(days=14)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
+
+@dp.callback_query(F.data.in_(['one_month']))
+async def one_month(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.today()+ relativedelta(months=1)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
+
+@dp.callback_query(F.data.in_(['half_year']))
+async def one_month(call: CallbackQuery, state: FSMContext):
+    now = datetime.datetime.today()+ relativedelta(months=6)
+    await state.update_data(year=now.year)
+    await state.update_data(month=now.month)
+    await state.update_data(day=now.day)
+    await state.set_state(States.hm)
+    await call.message.answer("Введите время в формате ЧЧ:ММ")
+    await call.answer()
+
+
 async def short_cut(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Сейчас",callback_data="now")
-    builder.button(text="Через час",callback_data="one_hour")
-    builder.button(text="Сегодня",callback_data="today")
-    builder.button(text="Завтра",callback_data="tomorrow")
-    builder.button(text="Задать самостоятельно",callback_data="custom")
+    data = await state.get_data()
+    if data["object_type"]=="queue":
+        builder.button(text="Сейчас",callback_data="now")
+        builder.button(text="Через час",callback_data="one_hour")
+        builder.button(text="Сегодня",callback_data="today")
+        builder.button(text="Завтра",callback_data="tomorrow")
+        builder.button(text="Задать самостоятельно",callback_data="custom")
+    elif data["object_type"]=="deadline":
+        builder.button(text="Через неделю",callback_data="week")
+        builder.button(text="Через 2 недели",callback_data="2week")
+        builder.button(text="Через месяц",callback_data="one_month")
+        builder.button(text="Через полгода",callback_data="half_year")
+        builder.button(text="Задать самостоятельно",callback_data="custom")
     builder.adjust(2)
     await message.answer("Выберите время", reply_markup=builder.as_markup())
 
