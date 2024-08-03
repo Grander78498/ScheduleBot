@@ -9,22 +9,35 @@ from .models import *
 celery_event_loop = asyncio.new_event_loop()
 
 
-@shared_task(name="send_queue")
-def task_send_queue(queue_id):
-    queue = Queue.objects.get(pk=queue_id)
-    group = TelegramGroup.objects.get(pk=queue.group_id)
-    celery_event_loop.run_until_complete(bot.queue_send(queue.id, group.thread_id, group.tg_id, queue.message))
+@shared_task(name="send_ready")
+def task_send_ready(object_id, object_type: str):
+    if object_type == 'queue':
+        _object = Queue.objects.get(pk=object_id)
+    else:
+        _object = Deadline.objects.get(pk=object_id)
+    group = TelegramGroup.objects.get(pk=_object.group_id)
+    celery_event_loop.run_until_complete(bot.send_ready(_object.id, group.thread_id, group.tg_id,
+                                                        _object.message, object_type))
 
 
-@shared_task(name="queue_notif")
-def task_queue_notif(queue_id):
-    queue = Queue.objects.get(pk=queue_id)
-    group = TelegramGroup.objects.get(pk=queue.group_id)
-    message = \
-    f"""НАПОМИНАНИЕ!!!
-    Очередь {queue.message} будет отправлена через {print_date_diff(timezone.now(), queue.date)}
-    """
-    celery_event_loop.run_until_complete(bot.queue_notif_send(queue.id, group.thread_id, group.tg_id, message))
+@shared_task(name="send_notif")
+def task_send_notif(object_id, object_type):
+    if object_type == 'queue':
+        _object = Queue.objects.get(pk=object_id)
+    else:
+        _object = Deadline.objects.get(pk=object_id)
+    group = TelegramGroup.objects.get(pk=_object.group_id)
+    if object_type == 'queue':
+        message = \
+        f"""НАПОМИНАНИЕ!!!
+        Очередь {_object.message} будет отправлена через {print_date_diff(timezone.now(), _object.date)}
+        """
+    else:
+        message = \
+            f"""НАПОМИНАНИЕ!!!
+                До дедлайна {_object.message} осталось {print_date_diff(timezone.now(), _object.date)}
+                """
+    celery_event_loop.run_until_complete(bot.send_notification(_object.id, group.thread_id, group.tg_id, message))
 
 
 @shared_task(name="render_queue")

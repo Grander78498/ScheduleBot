@@ -171,6 +171,7 @@ async def change_topic(message: types.Message):
     if ok:
         await api.change_topic(message.chat.id, message.message_thread_id)
         await message.answer(text="Тема изменена успешно")
+        await cmd_startgroup(message)
     else:
         try:
             await bot.send_message(text="Пошёл нахуй пидорас уёбище блядское хули лезешь не туда???",
@@ -192,7 +193,7 @@ async def cmd_startgroup(message: types.Message) -> None:
             names.append(name)
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте уважаемые пользователи, для того, чтобы создать очередь админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
+            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
 
@@ -611,11 +612,11 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         builder.adjust(1)
         await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
         mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                               text="Ваша смертная линия  {} будет наступит через {}.".format(data['text'], date, notif_date) +
+                               text="Ваша смертная линия {} наступит через {}.".format(data['text'], date, notif_date) +
                                      (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(notif_date)
                                      if notif_date != "" else ""))
-    await api.update_message_id(queue_id, mes.message_id)
-    await api.create_queue_tasks(queue_id, data["group_id"])
+    await api.update_message_id(queue_id, mes.message_id, data['object_type'])
+    await api.create_queue_tasks(queue_id, data["group_id"], data['object_type'])
 
 
 
@@ -821,24 +822,25 @@ async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
     await call.answer()
 
 
-async def queue_send(queue_id, thread_id, group_id, message):
+async def send_ready(queue_id, thread_id, group_id, message, object_type):
     builder = InlineKeyboardBuilder()
-    queue_message_id = await api.get_message_id(queue_id)
+    queue_message_id = await api.get_message_id(queue_id, object_type)
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
-    builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-    builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
-    builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
-    builder.adjust(1)
+    if object_type == "queue":
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
+        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
+        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
+        builder.adjust(1)
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
                                 reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    await api.update_message_id(queue_id, mess.message_id)
+    await api.update_message_id(queue_id, mess.message_id, object_type)
 
 
-async def queue_notif_send(queue_id, thread_id, group_id, message):
-    mess_id = await api.get_message_id(queue_id)
+async def send_notification(queue_id, thread_id, group_id, message, object_type):
+    mess_id = await api.get_message_id(queue_id, object_type)
     await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
-    await api.update_message_id(queue_id, a.message_id)
+    await api.update_message_id(queue_id, a.message_id, object_type)
 
 
 # async def scheduler():

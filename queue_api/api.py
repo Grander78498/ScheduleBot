@@ -27,14 +27,19 @@ async def get_bot_name(bot):
 
 
 async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
-    group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
     for admin, name in zip(admins, names):
-        try:
-            user, _ = await TelegramUser.objects.aget_or_create(tg_id=admin, full_name=name)
-            await user.groups.aadd(group, through_defaults={"is_admin": True})
-            await user.asave()
-        except Exception as e:
-            print(e)
+        await add_user_to_group(group_id, group_name, thread_id, admin, name, True)
+
+
+async def add_user_to_group(group_id: int, group_name: str, thread_id: int,
+                            user_id: int, user_fullname: str, is_admin: bool = False):
+    group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
+    try:
+        user, _ = await TelegramUser.objects.aget_or_create(tg_id=user_id, full_name=user_fullname)
+        await user.groups.aadd(group, through_defaults={"is_admin": is_admin})
+        await user.asave()
+    except Exception as e:
+        print(e)
 
 
 async def check_admin(admin_id: int):
@@ -44,44 +49,44 @@ async def check_admin(admin_id: int):
     return groups
 
 
-async def create_queue_tasks(queue_id: int, group_id: int):
-    queue = await Queue.objects.aget(pk=queue_id)
-    group = await TelegramGroup.objects.aget(pk=group_id)
-    time_diff = queue.date - timezone.now()
-    if time_diff >= timedelta(hours=2):
-        queue_notif_date = queue.date - timedelta(hours=1)
+async def create_queue_tasks(object_id: int, group_id: int, object_type: str):
+    if object_type == "queue":
+        _object = await Queue.objects.aget(pk=object_id)
     else:
-        queue_notif_date = queue.date - 0.5 * time_diff
+        _object = await Deadline.objects.aget(pk=object_id)
+    group = await TelegramGroup.objects.aget(pk=group_id)
+    time_diff = _object.date - timezone.now()
+    if time_diff >= timedelta(hours=2):
+        queue_notif_date = _object.date - timedelta(hours=1)
+    else:
+        queue_notif_date = _object.date - 0.5 * time_diff
 
     if not settings.DEBUG:
-        clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue.date)
+        clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=_object.date)
         clocked_notif, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue_notif_date)
         if time_diff >= timedelta(minutes=2):
             await PeriodicTask.objects.acreate(
                 clocked=clocked_notif,
-                name=f"Notification of queue {queue.message} ({queue.pk}). Created in {group.name}",
-                task="queue_notif",
+                name=f"{_object.message} {_object.pk} {group.name}",
+                task="send_notif",
                 one_off=True,
-                args=json.dumps([queue.pk]),
+                args=json.dumps([_object.pk, object_type]),
                 expires=queue_notif_date + timedelta(seconds=10)
             )
         await PeriodicTask.objects.acreate(
             clocked=clocked_queue,
-            name=f"Queue {queue.message} ({queue.pk}). Created in {group.name}",
-            task="send_queue",
+            name=f"Ready {_object.message} {_object.pk} {group.name}",
+            task="send_ready",
             one_off=True,
-            args=json.dumps([queue.pk]),
-            expires=queue.date + timedelta(seconds=10)
+            args=json.dumps([_object.pk, object_type]),
+            expires=_object.date + timedelta(seconds=10)
         )
     else:
-        from bot import queue_send, queue_notif_send
-
-        # if queue.date > timezone.now():
-        #     await asyncio.sleep((queue.date - timezone.now()).seconds + 24 * 3600 * (queue.date - timezone.now()).seconds)
-        await asyncio.sleep(15)
-        await queue_notif_send(queue.pk, group.thread_id, group.pk, queue.message)
-        await asyncio.sleep(5)
-        await queue_send(queue.pk, group.thread_id, group.pk, queue.message)
+        from bot import send_ready, send_notification
+        await asyncio.sleep(7)
+        await send_notification(_object.pk, group.thread_id, group.pk, _object.message, object_type)
+        await asyncio.sleep(3)
+        await send_ready(_object.pk, group.thread_id, group.pk, _object.message, object_type)
 
 
 def print_date_diff(date1, date2):
@@ -210,11 +215,11 @@ async def check_time(time, year, month, day, user_id):
         return 'TimeError'
     user = await TelegramUser.objects.aget(pk=user_id)
     tz = user.tz
+    tz = str(tz).rjust(2, '0') + '00'
     current_date = timezone.now()
     given_date = datetime.strptime(
-        f'{day}.{month}.{year} {time}{tz}', '%d.%m.%Y %H:%M%z')
-    print(f'{day}.{month}.{year} {time}{tz}')
-    # Здесь убрать true при нормальном запуске!!!
+        f"{year}-{str(month).rjust(2, '0')}-{str(day).rjust(2, '0')} {time}+{tz}",
+        "%Y-%m-%d %H:%M%z")
     if given_date >= current_date or (current_date - given_date).total_seconds() >= 60:
         return "It's okay it's fine"
     return "EarlyQueueError"
@@ -273,12 +278,18 @@ async def print_queue(queue_id: int, private: bool):
     return queue.group_id, queue.message_id, res_string
 
 
-async def update_message_id(queue_id: int, message_id: int):
-    await Queue.objects.filter(pk=queue_id).aupdate(message_id=message_id)
+async def update_message_id(queue_id: int, message_id: int, object_type: str):
+    if object_type == "queue":
+        await Queue.objects.filter(pk=queue_id).aupdate(message_id=message_id)
+    else:
+        await Deadline.objects.filter(pk=queue_id).aupdate(message_id=message_id)
 
 
-async def get_message_id(queue_id: int):
-    return (await Queue.objects.aget(pk=queue_id)).message_id
+async def get_message_id(queue_id: int, object_type: str):
+    if object_type == "queue":
+        return (await Queue.objects.aget(pk=queue_id)).message_id
+    else:
+        return (await Deadline.objects.aget(pk=queue_id)).message_id
 
 
 async def get_queue_link(queue_id: int):
