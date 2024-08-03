@@ -921,6 +921,11 @@ async def bot_add_to_group(message: types.Message):
     if (await bot.get_me()).id==message.new_chat_member['id']:
         await cmd_startgroup(message)
 
+@dp.message(F.left_chat_participant)
+async def bot_delete_from_group(message: types.Message):
+    if (await bot.get_me()).id==message.left_chat_participant['id']:
+        print("Хуй")
+        await api.delete_group(message.chat.id)
 
 
 async def main():
