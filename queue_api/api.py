@@ -45,6 +45,20 @@ async def add_user_to_group(group_id: int,
         print(e)
 
 
+async def get_group_link(group_id: int):
+    group = await TelegramGroup.objects.aget(tg_id=group_id)
+    if group.thread_id is None:
+        link = f"https://t.me/c/{int(str(group_id)[4:])}/1"
+    else:
+        link = f"https://t.me/c/{int(str(group_id)[4:])}/{group.thread_id}"
+    return link
+
+
+async def delete_group(group_id: int):
+    group = await TelegramGroup.objects.aget(tg_id=group_id)
+    await group.adelete()
+
+
 async def check_admin(admin_id: int):
     groups = []
     async for group in TelegramGroup.objects.filter(telegramuser=admin_id, groupmember__is_admin=True):

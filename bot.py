@@ -215,11 +215,11 @@ async def cmd_start(message: types.Message) -> None:
             elif str(message.text).split()[1].startswith("sub"):
                 groupID = int(str(message.text).split()[1][3:])
                 await api.add_user_to_group(group_id=groupID, user_id=message.chat.id, user_fullname=message.from_user.full_name, group_name=None,thread_id=None)
-                await message.answer("Вы успешно продали свою душу")
                 # Здесь нужно вернуть на топик группы
-#                link = await api.get_queue_link(queueID)
-#                return_builder = InlineKeyboardBuilder()
-#                return_builder.button(text="Вернуться в группу", url=link)
+                link = await api.get_group_link(groupID)
+                return_builder = InlineKeyboardBuilder()
+                return_builder.button(text="Вернуться в группу", url=link)
+                await message.answer("Вы успешно продали свою душу", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split())==1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
