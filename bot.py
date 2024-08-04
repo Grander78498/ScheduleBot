@@ -371,7 +371,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
         groups = await api.check_admin(call.message.chat.id)
         if len(groups) == 0:
-            await call.answer("Ну создай, попробуй")
+            await call.answer("Так как у вас нет групп, где вы являетесь администратором")
             # Заглушка
         else:
             builder = InlineKeyboardBuilder()
