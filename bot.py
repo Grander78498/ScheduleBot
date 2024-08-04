@@ -19,6 +19,11 @@ from aiogram.filters.callback_data import CallbackData
 from config import API_TOKEN
 from queue_api.api import EventType
 
+
+import asyncio
+
+
+
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 
@@ -182,6 +187,9 @@ async def change_topic(message: types.Message):
 
 async def cmd_startgroup(message: types.Message) -> None:
     if message.chat.type == "supergroup":
+        from queue_api.tasks import get_users
+        result = get_users.delay(message.chat.id)
+        print(result.get())
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
         names = []
