@@ -10,34 +10,29 @@ celery_event_loop = asyncio.new_event_loop()
 
 
 @shared_task(name="send_ready")
-def task_send_ready(object_id, object_type: str):
-    if object_type == 'queue':
-        _object = Queue.objects.get(pk=object_id)
-    else:
-        _object = Deadline.objects.get(pk=object_id)
-    group = TelegramGroup.objects.get(pk=_object.group_id)
-    celery_event_loop.run_until_complete(bot.send_ready(_object.id, group.thread_id, group.tg_id,
-                                                        _object.message, object_type))
+def task_send_ready(event_id):
+    event = Event.objects.get(pk=event_id)
+    group = TelegramGroup.objects.get(pk=event.group_id)
+    celery_event_loop.run_until_complete(bot.send_ready(event.id, group.thread_id, group.tg_id,
+                                                        event.message))
 
 
 @shared_task(name="send_notif")
-def task_send_notif(object_id, object_type):
-    if object_type == 'queue':
-        _object = Queue.objects.get(pk=object_id)
-    else:
-        _object = Deadline.objects.get(pk=object_id)
-    group = TelegramGroup.objects.get(pk=_object.group_id)
-    if object_type == 'queue':
+def task_send_notif(event_id):
+    event = Event.objects.get(pk=event_id)
+    group = TelegramGroup.objects.get(pk=event.group_id)
+    try:
+        getattr(event, "queue")
         message = \
         f"""НАПОМИНАНИЕ!!!
-        Очередь {_object.message} будет отправлена через {print_date_diff(timezone.now(), _object.date)}
+        Очередь {event.message} будет отправлена через {print_date_diff(timezone.now(), event.date)}
         """
-    else:
+    except Exception:
         message = \
             f"""НАПОМИНАНИЕ!!!
-                До дедлайна {_object.message} осталось {print_date_diff(timezone.now(), _object.date)}
+                До дедлайна {event.message} осталось {print_date_diff(timezone.now(), event.date)}
                 """
-    celery_event_loop.run_until_complete(bot.send_notification(_object.id, group.thread_id, group.tg_id, message))
+    celery_event_loop.run_until_complete(bot.send_notification(event.id, group.thread_id, group.tg_id, message))
 
 
 @shared_task(name="render_queue")

@@ -12,6 +12,7 @@ from django.conf import settings
 from django.db.models import F
 from asgiref.sync import sync_to_async
 from django.utils import timezone
+from queue_api.utils import EventType
 import json
 import re
 
@@ -66,44 +67,48 @@ async def check_admin(admin_id: int):
     return groups
 
 
-async def create_queue_tasks(object_id: int, group_id: int, object_type: str):
-    if object_type == "queue":
-        _object = await Queue.objects.aget(pk=object_id)
-    else:
-        _object = await Deadline.objects.aget(pk=object_id)
+async def create_queue_tasks(event_id: int, group_id: int):
+    event = await Event.objects.aget(pk=event_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
-    time_diff = _object.date - timezone.now()
+    time_diff = event.date - timezone.now()
     if time_diff >= timedelta(hours=2):
-        queue_notif_date = _object.date - timedelta(hours=1)
+        queue_notif_date = event.date - timedelta(hours=1)
     else:
-        queue_notif_date = _object.date - 0.5 * time_diff
+        queue_notif_date = event.date - 0.5 * time_diff
 
     if not settings.DEBUG:
-        clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=_object.date)
+        clocked_queue, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=event.date)
         clocked_notif, _ = await ClockedSchedule.objects.aget_or_create(clocked_time=queue_notif_date)
         if time_diff >= timedelta(minutes=2):
             await PeriodicTask.objects.acreate(
                 clocked=clocked_notif,
-                name=f"{_object.message} {_object.pk} {group.name}",
+                name=f"{event.message} {event.pk} {group.name}",
                 task="send_notif",
                 one_off=True,
-                args=json.dumps([_object.pk, object_type]),
+                args=json.dumps([event.pk]),
                 expires=queue_notif_date + timedelta(seconds=10)
             )
         await PeriodicTask.objects.acreate(
             clocked=clocked_queue,
-            name=f"Ready {_object.message} {_object.pk} {group.name}",
+            name=f"Ready {event.message} {event.pk} {group.name}",
             task="send_ready",
             one_off=True,
-            args=json.dumps([_object.pk, object_type]),
-            expires=_object.date + timedelta(seconds=10)
+            args=json.dumps([event.pk]),
+            expires=event.date + timedelta(seconds=10)
         )
     else:
         from bot import send_ready, send_notification
         await asyncio.sleep(7)
-        await send_notification(_object.pk, group.thread_id, group.pk, _object.message, object_type)
+        await send_notification(event.pk, group.thread_id, group.pk, event.message)
         await asyncio.sleep(3)
-        await send_ready(_object.pk, group.thread_id, group.pk, _object.message, object_type)
+        await send_ready(event.pk, group.thread_id, group.pk, event.message)
+
+
+async def get_event_type_by_id(event_id) -> EventType:
+    event = await Event.objects.aget(pk=event_id)
+    if 'queue' in dir(event):
+        return EventType.QUEUE
+    return EventType.DEADLINE
 
 
 def print_date_diff(date1, date2):
@@ -204,17 +209,17 @@ async def create_queue_or_deadline(data_dict):
         f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
         "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    is_queue = data_dict["object_type"] == "queue"
+    is_queue = data_dict["event_type"] == EventType.QUEUE
     if is_queue:
         queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
-        object_id = queue.pk
+        event_id = queue.pk
     else:
         deadline = await Deadline.objects.acreate(message=message, date=date, creator=creator, group=group)
-        object_id = deadline.pk
+        event_id = deadline.pk
     time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-                print_date_diff(timezone.now(), date), object_id, "")
+                print_date_diff(timezone.now(), date), event_id, "")
 
     if time_diff >= timedelta(hours=2):
         queue_notif_date = date - timedelta(hours=1)
@@ -222,7 +227,7 @@ async def create_queue_or_deadline(data_dict):
         queue_notif_date = date - 0.5 * time_diff
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            print_date_diff(timezone.now(), date), object_id, print_date_diff(timezone.now(), queue_notif_date))
+            print_date_diff(timezone.now(), date), event_id, print_date_diff(timezone.now(), queue_notif_date))
 
 
 async def check_time(time, year, month, day, user_id):
@@ -243,8 +248,10 @@ async def check_time(time, year, month, day, user_id):
 
 
 def check_timezone(tz):
-    '''Функция проверки корректности временной зоны'''
-    return bool(re.fullmatch(r'\-?\d', tz))
+    """
+    Функция проверки корректности временной зоны
+    """
+    return bool(re.fullmatch(r'-?\d', tz))
 
 
 async def send_render_task(queue_id: int, private: bool):
@@ -295,18 +302,12 @@ async def print_queue(queue_id: int, private: bool):
     return queue.group_id, queue.message_id, res_string
 
 
-async def update_message_id(queue_id: int, message_id: int, object_type: str):
-    if object_type == "queue":
-        await Queue.objects.filter(pk=queue_id).aupdate(message_id=message_id)
-    else:
-        await Deadline.objects.filter(pk=queue_id).aupdate(message_id=message_id)
+async def update_message_id(event_id: int, message_id: int):
+    await Event.objects.filter(pk=event_id).aupdate(message_id=message_id)
 
 
-async def get_message_id(queue_id: int, object_type: str):
-    if object_type == "queue":
-        return (await Queue.objects.aget(pk=queue_id)).message_id
-    else:
-        return (await Deadline.objects.aget(pk=queue_id)).message_id
+async def get_message_id(event_id: int):
+    return (await Event.objects.aget(pk=event_id)).message_id
 
 
 async def get_queue_link(queue_id: int):

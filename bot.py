@@ -18,11 +18,10 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 from config import API_TOKEN
+from queue_api.utils import EventType
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
-
-
 
 dp = Dispatcher()
 
@@ -59,8 +58,7 @@ class States(StatesGroup):
     sec = State()
     swap = State()
     tz = State()
-    object_type = State()
-
+    event_type = State()
 
 
 class ReturnToQueueList(CallbackData, prefix="return"):
@@ -206,7 +204,7 @@ async def cmd_start(message: types.Message) -> None:
             if str(message.text).split()[1].startswith("add_queue"):
                 queueID = int(str(message.text).split()[1][8:])
                 await api.save_user(message.chat.id, message.from_user.full_name)
-                _,_ = await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
+                await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
                 # Здесь был render queue
                 link = await api.get_queue_link(queueID)
                 return_builder = InlineKeyboardBuilder()
@@ -215,12 +213,11 @@ async def cmd_start(message: types.Message) -> None:
             elif str(message.text).split()[1].startswith("sub"):
                 groupID = int(str(message.text).split()[1][3:])
                 await api.add_user_to_group(group_id=groupID, user_id=message.chat.id, user_fullname=message.from_user.full_name, group_name=None,thread_id=None)
-                # Здесь нужно вернуть на топик группы
                 link = await api.get_group_link(groupID)
                 return_builder = InlineKeyboardBuilder()
                 return_builder.button(text="Вернуться в группу", url=link)
                 await message.answer("Вы успешно продали свою душу", reply_markup=return_builder.as_markup())
-        elif len(str(message.text).split())==1:
+        elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
             builder_add.adjust(1)
@@ -354,7 +351,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
             # Заглушка
         else:
             builder = InlineKeyboardBuilder()
-            await state.update_data(object_type="deadline")
+            await state.update_data(event_type=EventType.DEADLINE)
             for group in groups:
                 builder.button(text=group.name,
                                callback_data=GroupSelectCallback(groupID=group.tg_id))
@@ -404,7 +401,7 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
             await call.message.answer("У тебя нет групп, где ты админ", reply_markup=builder.as_markup())
         else:
             builder = InlineKeyboardBuilder()
-            await state.update_data(object_type="queue")
+            await state.update_data(event_type=EventType.QUEUE)
             for group in groups:
                 builder.button(text=group.name,
                                callback_data=GroupSelectCallback(groupID=group.tg_id))
@@ -607,7 +604,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         print("Error")
     thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
     builder = InlineKeyboardBuilder()
-    if data["object_type"]=="queue":
+    if data["event_type"] == EventType.QUEUE:
         builder.button(text="Создать очередь", callback_data="add_queue")
         builder.button(text="Вывести существующие очереди", callback_data="print_queue")
         builder.button(text="Запросить перемещение в очереди", callback_data="swap")
@@ -626,8 +623,8 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                text="Ваша смертная линия {} наступит через {}.".format(data['text'], date, notif_date) +
                                      (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(notif_date)
                                      if notif_date != "" else ""))
-    await api.update_message_id(queue_id, mes.message_id, data['object_type'])
-    await api.create_queue_tasks(queue_id, data["group_id"], data['object_type'])
+    await api.update_message_id(queue_id, mes.message_id)
+    await api.create_queue_tasks(queue_id, data["group_id"])
 
 
 
@@ -737,13 +734,13 @@ async def one_month(call: CallbackQuery, state: FSMContext):
 async def short_cut(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     data = await state.get_data()
-    if data["object_type"]=="queue":
+    if data["event_type"] == EventType.QUEUE:
         builder.button(text="Сейчас",callback_data="now")
         builder.button(text="Через час",callback_data="one_hour")
         builder.button(text="Сегодня",callback_data="today")
         builder.button(text="Завтра",callback_data="tomorrow")
         builder.button(text="Задать самостоятельно",callback_data="custom")
-    elif data["object_type"]=="deadline":
+    elif data["event_type"] == EventType.DEADLINE:
         builder.button(text="Через неделю",callback_data="week")
         builder.button(text="Через 2 недели",callback_data="2week")
         builder.button(text="Через месяц",callback_data="one_month")
@@ -833,25 +830,26 @@ async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
     await call.answer()
 
 
-async def send_ready(queue_id, thread_id, group_id, message, object_type):
+async def send_ready(event_id, thread_id, group_id, message):
     builder = InlineKeyboardBuilder()
-    queue_message_id = await api.get_message_id(queue_id, object_type)
+    queue_message_id = await api.get_message_id(event_id)
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
-    if object_type == "queue":
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
-        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
+    event_type = await api.get_event_type_by_id(event_id)
+    if event_type == EventType.QUEUE:
+        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=event_id))
+        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=event_id))
+        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
         builder.adjust(1)
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
                                 reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    await api.update_message_id(queue_id, mess.message_id, object_type)
+    await api.update_message_id(event_id, mess.message_id)
 
 
-async def send_notification(queue_id, thread_id, group_id, message, object_type):
-    mess_id = await api.get_message_id(queue_id, object_type)
+async def send_notification(queue_id, thread_id, group_id, message):
+    mess_id = await api.get_message_id(queue_id)
     await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
-    await api.update_message_id(queue_id, a.message_id, object_type)
+    await api.update_message_id(queue_id, a.message_id)
 
 
 # async def scheduler():
