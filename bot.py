@@ -196,9 +196,6 @@ async def cmd_startgroup(message: types.Message) -> None:
             name = admin.user.full_name
             d.append(userId)
             names.append(name)
-        builder_start = InlineKeyboardBuilder()
-        builder_start.button(text="АААААААААА",
-                             url="https://t.me/{}?start=sub{}".format(await api.get_bot_name(bot), message.chat.id))
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         result = task_get_users.delay(message.chat.id)
         users = result.get()
@@ -206,8 +203,7 @@ async def cmd_startgroup(message: types.Message) -> None:
             await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
                                         False, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic",
-            reply_markup=builder_start.as_markup())
+            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
 @dp.message(Command("start"))
@@ -223,14 +219,6 @@ async def cmd_start(message: types.Message) -> None:
                 return_builder = InlineKeyboardBuilder()
                 return_builder.button(text="Вернуться в группу", url=link)
                 await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
-            elif str(message.text).split()[1].startswith("sub"):
-                groupID = int(str(message.text).split()[1][3:])
-                await api.add_user_to_group(group_id=groupID, user_id=message.chat.id,
-                                            user_fullname=message.from_user.full_name, group_name=None, thread_id=None)
-                link = await api.get_group_link(groupID)
-                return_builder = InlineKeyboardBuilder()
-                return_builder.button(text="Вернуться в группу", url=link)
-                await message.answer("Вы успешно продали свою душу", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу",
@@ -382,7 +370,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
         groups = await api.check_admin(call.message.chat.id)
         if len(groups) == 0:
-            await call.answer("Ну создай, попробуй")
+            await call.answer("Так как у вас нет групп, где вы являетесь администратором")
             # Заглушка
         else:
             builder = InlineKeyboardBuilder()
