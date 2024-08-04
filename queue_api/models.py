@@ -1,14 +1,24 @@
 from django.db import models
 
 
+class Event(models.Model):
+    message = models.CharField(max_length=512)
+    date = models.DateTimeField()
+    creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
+    group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
+    message_id = models.BigIntegerField(null=True)
+
+    def __str__(self):
+        return self.message
+
+
 class TelegramUser(models.Model):
     tg_id = models.BigIntegerField(primary_key=True)
     full_name = models.CharField(max_length=128, null=True)
     groups = models.ManyToManyField('TelegramGroup', through='GroupMember')
-    queue = models.ManyToManyField('Queue', through='QueueMember')
+    user_queue = models.ManyToManyField('Queue', through='QueueMember')
     tz = models.IntegerField(default=3)
     is_started = models.BooleanField(default=False)
-
 
     def __str__(self):
         return str(self.tg_id)
@@ -29,16 +39,8 @@ class GroupMember(models.Model):
     is_admin = models.BooleanField(default=False)
 
 
-class Queue(models.Model):
-    message = models.CharField(max_length=64)
-    date = models.DateTimeField()
-    creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE, related_name='creator')
-    group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
-    message_id = models.BigIntegerField(null=True)
+class Queue(Event):
     is_rendering = models.BooleanField(default=False)
-
-    def __str__(self):
-        return self.message
 
 
 class QueueMember(models.Model):
@@ -55,3 +57,7 @@ class SwapRequest(models.Model):
     second_member = models.ForeignKey('QueueMember', on_delete=models.CASCADE, related_name='second_member')
     first_message_id = models.BigIntegerField(null=True)
     second_message_id = models.BigIntegerField(null=True)
+
+
+class Deadline(Event):
+    pass
