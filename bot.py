@@ -4,12 +4,11 @@ import aiogram
 import datetime
 from dateutil.relativedelta import relativedelta
 
-
 from queue_api import api
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
-from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, CommandStart
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER
 from aiogram.types import ChatMemberUpdated
 
 from aiogram.fsm.context import FSMContext
@@ -18,7 +17,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 from config import API_TOKEN
-from queue_api.utils import EventType
+from queue_api.api import EventType
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -64,6 +63,7 @@ class States(StatesGroup):
 class ReturnToQueueList(CallbackData, prefix="return"):
     messageID: int
 
+
 class YearCallback(CallbackData, prefix="year"):
     year: int
 
@@ -98,8 +98,10 @@ class QueueIDCallback(CallbackData, prefix="queueID"):
 class RemoveMyself(CallbackData, prefix="RemoveMyself"):
     queueID: int
 
+
 class FindMyself(CallbackData, prefix="FindMyself"):
     queueID: int
+
 
 class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
     first_user_id: int
@@ -114,6 +116,7 @@ class QueueSelectCallback(CallbackData, prefix="qs"):
     delete_message_id: int
     queueName: str
 
+
 class QueueSelectForSwapCallback(CallbackData, prefix="qss"):
     queueID: int
     queueName: str
@@ -121,7 +124,7 @@ class QueueSelectForSwapCallback(CallbackData, prefix="qss"):
 
 class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
     queueID: int
-    messageID : int
+    messageID: int
 
 
 class DeleteQueueMemberCallback(CallbackData, prefix="DeleteQueueMember"):
@@ -152,7 +155,6 @@ async def print_info_queue(message: types.Message):
     await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
 
-
 @dp.message(Command("deadline"))
 async def print_info_deadline(message: types.Message):
     builder = InlineKeyboardBuilder()
@@ -162,10 +164,10 @@ async def print_info_deadline(message: types.Message):
     await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
 
-
 @dp.message(Command("change_topic"))
 async def change_topic(message: types.Message):
-    ok = True if message.from_user.id in [i.user.id for i in (await bot.get_chat_administrators(message.chat.id))] else False
+    ok = True if message.from_user.id in [i.user.id for i in
+                                          (await bot.get_chat_administrators(message.chat.id))] else False
     if ok:
         await api.change_topic(message.chat.id, message.message_thread_id)
         await message.answer(text="Тема изменена успешно")
@@ -176,7 +178,6 @@ async def change_topic(message: types.Message):
                                    chat_id=message.from_user.id)
         except aiogram.exceptions.TelegramForbiddenError:
             pass
-
 
 
 async def cmd_startgroup(message: types.Message) -> None:
@@ -190,17 +191,18 @@ async def cmd_startgroup(message: types.Message) -> None:
             d.append(userId)
             names.append(name)
         builder_start = InlineKeyboardBuilder()
-        builder_start.button(text="АААААААААА", url="https://t.me/{}?start=sub{}".format(await api.get_bot_name(bot), message.chat.id))
+        builder_start.button(text="АААААААААА",
+                             url="https://t.me/{}?start=sub{}".format(await api.get_bot_name(bot), message.chat.id))
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         await message.answer(
-            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic", reply_markup=builder_start.as_markup())
-
+            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic",
+            reply_markup=builder_start.as_markup())
 
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message) -> None:
     if message.chat.type == "private":
-        if len(str(message.text).split())>1:
+        if len(str(message.text).split()) > 1:
             if str(message.text).split()[1].startswith("add_queue"):
                 queueID = int(str(message.text).split()[1][8:])
                 await api.save_user(message.chat.id, message.from_user.full_name)
@@ -212,32 +214,35 @@ async def cmd_start(message: types.Message) -> None:
                 await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
             elif str(message.text).split()[1].startswith("sub"):
                 groupID = int(str(message.text).split()[1][3:])
-                await api.add_user_to_group(group_id=groupID, user_id=message.chat.id, user_fullname=message.from_user.full_name, group_name=None,thread_id=None)
+                await api.add_user_to_group(group_id=groupID, user_id=message.chat.id,
+                                            user_fullname=message.from_user.full_name, group_name=None, thread_id=None)
                 link = await api.get_group_link(groupID)
                 return_builder = InlineKeyboardBuilder()
                 return_builder.button(text="Вернуться в группу", url=link)
                 await message.answer("Вы успешно продали свою душу", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
-            builder_add.button(text="Добавить бота в группу", url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(await api.get_bot_name(bot)))
+            builder_add.button(text="Добавить бота в группу",
+                               url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(
+                                   await api.get_bot_name(bot)))
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
-            await message.answer("Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline", reply_markup=builder_add.as_markup())
+            await message.answer(
+                "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline",
+                reply_markup=builder_add.as_markup())
     else:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
 @dp.message(Command("change_tz"))
-async def cmd_change_tz(message: types.Message,  state: FSMContext):
+async def cmd_change_tz(message: types.Message, state: FSMContext):
     await message.answer("Введите новый часовой пояс")
     await state.set_state(States.tz)
-
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
 async def user_blocked_bot(event: ChatMemberUpdated):
     await api.update_started(event.from_user.id, event.from_user.full_name, False)
-
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
@@ -246,37 +251,54 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
         await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
-
-async def send_swap_request(message: types.Message, second_memberId: str,from_user_id ,state: FSMContext):
+async def send_swap_request(message: types.Message, second_member_id: str, from_user_id, state: FSMContext):
     res = (await state.get_data())["swap"]
     queueID = res["queueID"]
     await bot.delete_message(chat_id=from_user_id, message_id=res["first_m"])
     await bot.delete_message(chat_id=from_user_id, message_id=res["second_m"])
     await state.clear()
-    result = await api.get_user_id(await api.get_queue_member_id(queueID,from_user_id), second_memberId)
-    if result["status"]!="OK":
+    result = await api.get_user_id(await api.get_queue_member_id(queueID, from_user_id), second_member_id)
+    if result["status"] != "OK":
         await message.answer(result["message"])
     else:
         mess_lichka = await message.answer(result["message"])
         try:
             mes = await bot.send_message(chat_id=result["user_id"],
-                                   text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(result['first_name'], result['first_position'], result['queue_name'], result['second_position']))
+                                         text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(
+                                             result['first_name'], result['first_position'], result['queue_name'],
+                                             result['second_position']))
             builder = InlineKeyboardBuilder()
-            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny", first_user_id=await api.get_queue_member_id(queueID,from_user_id), first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message2_id=mes.message_id, message1_id=mess_lichka.message_id))
-            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept", first_user_id=await api.get_queue_member_id(queueID,from_user_id),first_tg_user_id=from_user_id,queueId=queueID ,second_user_id=int(second_memberId), message2_id=mes.message_id, message1_id=mess_lichka.message_id))
+            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny",
+                                                                        first_user_id=await api.get_queue_member_id(
+                                                                            queueID, from_user_id),
+                                                                        first_tg_user_id=from_user_id, queueId=queueID,
+                                                                        second_user_id=int(second_member_id),
+                                                                        message2_id=mes.message_id,
+                                                                        message1_id=mess_lichka.message_id))
+            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept",
+                                                                      first_user_id=await api.get_queue_member_id(
+                                                                          queueID, from_user_id),
+                                                                      first_tg_user_id=from_user_id, queueId=queueID,
+                                                                      second_user_id=int(second_member_id),
+                                                                      message2_id=mes.message_id,
+                                                                      message1_id=mess_lichka.message_id))
             await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
                                                 reply_markup=builder.as_markup())
-            await api.handle_request(await api.get_queue_member_id(queueID,from_user_id), second_memberId, mess_lichka.message_id, mes.message_id)
-            await api.add_request_timer(from_user_id,result["user_id"], mess_lichka.message_id, mes.message_id, queueID)
+            await api.handle_request(await api.get_queue_member_id(queueID, from_user_id), second_member_id,
+                                     mess_lichka.message_id, mes.message_id)
+            await api.add_request_timer(from_user_id, result["user_id"], mess_lichka.message_id, mes.message_id,
+                                        queueID)
 
         except aiogram.exceptions.TelegramForbiddenError:
-            await message.answer("Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
-
+            await message.answer(
+                "Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
 
 
 async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Удалить запрос", callback_data=RemoveSwapRequest(first_m_id=message1_id,second_m_id=message2_id, first_user_id=first_id, second_user_id=second_id, queue_id=queue_id))
+    builder.button(text="Удалить запрос",
+                   callback_data=RemoveSwapRequest(first_m_id=message1_id, second_m_id=message2_id,
+                                                   first_user_id=first_id, second_user_id=second_id, queue_id=queue_id))
     try:
         await bot.edit_message_reply_markup(chat_id=first_id, message_id=message1_id,
                                             reply_markup=builder.as_markup())
@@ -287,8 +309,8 @@ async def edit_request_message(first_id: int, second_id: int, message1_id: int, 
 @dp.callback_query(RemoveSwapRequest.filter(F.first_m_id != 0))
 async def remove_swap(call: CallbackQuery, callback_data: RemoveSwapRequest):
     await api.remove_request(callback_data.first_user_id, callback_data.second_user_id, callback_data.queue_id)
-    await delete_request_messages(callback_data.first_m_id, callback_data.second_m_id, callback_data.first_user_id, callback_data.second_user_id)
-
+    await delete_request_messages(callback_data.first_m_id, callback_data.second_m_id, callback_data.first_user_id,
+                                  callback_data.second_user_id)
 
 
 async def delete_request_messages(first_message_id: int, second_message_id: int, chat1_id, chat2_id):
@@ -302,26 +324,29 @@ async def delete_request_messages(first_message_id: int, second_message_id: int,
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
 async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: FSMContext):
-    current_member_id = await api.remove_request(callback_data.first_tg_user_id, call.from_user.id, callback_data.queueId)
-    if callback_data.message_type=="Deny":
-        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был отклонён")
+    current_member_id = await api.remove_request(callback_data.first_tg_user_id, call.from_user.id,
+                                                 callback_data.queueId)
+    if callback_data.message_type == "Deny":
+        await bot.send_message(chat_id=callback_data.first_tg_user_id, text="Ваш запрос был отклонён")
     else:
         await api.swap_places(callback_data.first_user_id, callback_data.second_user_id)
         # Здесь был render queue
-        await bot.send_message(chat_id=callback_data.first_tg_user_id,text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
-    await delete_request_messages(callback_data.message1_id, callback_data.message2_id,callback_data.first_tg_user_id ,call.from_user.id)
+        await bot.send_message(chat_id=callback_data.first_tg_user_id,
+                               text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
+    await delete_request_messages(callback_data.message1_id, callback_data.message2_id, callback_data.first_tg_user_id,
+                                  call.from_user.id)
     deletable = await api.remove_all_in_requests(current_member_id)
     for elem in deletable:
-        await delete_request_messages(elem["first_message_id"], elem["second_message_id"], elem["first_member"], call.from_user.id)
+        await delete_request_messages(elem["first_message_id"], elem["second_message_id"], elem["first_member"],
+                                      call.from_user.id)
         await bot.send_message(chat_id=elem["first_member"], text="Ваш запрос был отклонён")
     await call.answer()
-
 
 
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
     queueList, lenq, st, names = await api.get_user_queues(call.from_user.id)
-    if lenq==0:
+    if lenq == 0:
         await call.message.answer(st)
     if lenq > 0:
         r = await call.message.answer(st)
@@ -329,7 +354,7 @@ async def swap(call: CallbackQuery, state: FSMContext):
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
                            callback_data=QueueSelectForSwapCallback(queueID=queueList[i],
-                                                             queueName=names[i]))
+                                                                    queueName=names[i]))
         builder.adjust(4)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
@@ -339,7 +364,6 @@ async def swap(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.in_(['print_deadline']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     await call.answer("Заглушка")
-
 
 
 @dp.callback_query(F.data.in_(['add_deadline']))
@@ -359,15 +383,17 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()
 
+
 @dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
     status = await api.check_requests(call.from_user.id, callback_data.queueID)
     if not status["in"] and not status["out"]:
-        _,_, text = await api.print_queue(callback_data.queueID, call.message.chat.type=="private")
+        _, _, text = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
         queue_list_message = await call.message.answer(text, parse_mode="MarkdownV2")
         simple_message = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
         await state.set_state(States.swap)
-        res = {"queueID":callback_data.queueID, "first_m":queue_list_message.message_id, "second_m":simple_message.message_id}
+        res = {"queueID": callback_data.queueID, "first_m": queue_list_message.message_id,
+               "second_m": simple_message.message_id}
         await state.update_data(swap=res)
         await call.answer()
     elif status["in"]:
@@ -376,8 +402,6 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
         await call.answer("У вас уже есть отправленный запрос, если прошло достаточно времени, вы можете его удалить")
     else:
         await call.answer("Долбоёб, как ты это вообще сделал, админам бота пиши тварь")
-
-
 
 
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
@@ -413,7 +437,7 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
-    if lenq==0:
+    if lenq == 0:
         await call.message.answer(st)
     if lenq > 0:
         r = await call.message.answer(st)
@@ -428,21 +452,25 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@dp.callback_query(ReturnToQueueList.filter(F.messageID!=0))
-async def printQueue_returned(call: CallbackQuery, callback_data : ReturnToQueueList, state: FSMContext):
-    queueList,lenq,st, names = await api.get_creator_queues(call.from_user.id)
+@dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
+async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
+    queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
     r = await bot.edit_message_text(text=st, chat_id=call.message.chat.id, message_id=callback_data.messageID)
-    if lenq==0:
+    if lenq == 0:
         uilder = InlineKeyboardBuilder()
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
                                             reply_markup=uilder.as_markup())
-    if lenq>0:
+    if lenq > 0:
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
-            builder.button(text="{}".format(i+1), callback_data=QueueSelectCallback(queueID=queueList[i], delete_message_id = r.message_id, queueName=names[i]))
+            builder.button(text="{}".format(i + 1),
+                           callback_data=QueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id,
+                                                             queueName=names[i]))
         builder.adjust(4)
-        await bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=r.message_id, reply_markup= builder.as_markup())
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+                                            reply_markup=builder.as_markup())
     await call.answer()
+
 
 @dp.callback_query(QueueSelectCallback.filter(F.queueID != 0))
 async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
@@ -450,8 +478,10 @@ async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
     builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID))
     builder.button(text="Удалить участника очереди",
                    callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID))
-    builder.button(text="Удалить очередь", callback_data=DeleteQueueCallback(queueID=callback_data.queueID, messageID=call.message.message_id))
-    builder.button(text="Удалить первого из очереди", callback_data=DeleteFirstQueueCallback(queueID=callback_data.queueID))
+    builder.button(text="Удалить очередь",
+                   callback_data=DeleteQueueCallback(queueID=callback_data.queueID, messageID=call.message.message_id))
+    builder.button(text="Удалить первого из очереди",
+                   callback_data=DeleteFirstQueueCallback(queueID=callback_data.queueID))
     builder.button(text="\u25C0", callback_data=ReturnToQueueList(messageID=call.message.message_id))
     builder.adjust(2)
     await bot.edit_message_text(text="Выбрана очередь {}".format(callback_data.queueName), chat_id=call.message.chat.id,
@@ -471,7 +501,6 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
         await call.answer("Данная очередь пуста")
     # Здесь был render queue
     await call.answer()
-
 
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
@@ -534,7 +563,7 @@ async def Month(call: CallbackQuery, callback_data: MonthCallback, state: FSMCon
         ok = True
         if remove is not None and len(remove.reply_markup.inline_keyboard) == len(
                 builder.as_markup().inline_keyboard) and len(builder.as_markup().inline_keyboard[0]) == len(
-                remove.reply_markup.inline_keyboard[0]):
+            remove.reply_markup.inline_keyboard[0]):
             ok = False
             for i in range(len(remove.reply_markup.inline_keyboard)):
                 for j in range(len(remove.reply_markup.inline_keyboard[i])):
@@ -569,7 +598,7 @@ async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMConte
         ok = True
         if remove is not None and len(remove.reply_markup.inline_keyboard) == len(
                 builder.as_markup().inline_keyboard) and len(builder.as_markup().inline_keyboard[0]) == len(
-                remove.reply_markup.inline_keyboard[0]):
+            remove.reply_markup.inline_keyboard[0]):
             ok = False
             for i in range(len(remove.reply_markup.inline_keyboard)):
                 for j in range(len(remove.reply_markup.inline_keyboard[i])):
@@ -611,22 +640,22 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         builder.adjust(1)
         await message.answer("Очередь была создана", reply_markup=builder.as_markup())
         mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                               text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
-                                     (" За {} до этого будет отправлено напоминание".format(notif_date)
-                                     if notif_date != "" else ""))
+                                     text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
+                                          (" За {} до этого будет отправлено напоминание".format(notif_date)
+                                           if notif_date != "" else ""))
     else:
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.adjust(1)
         await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
         mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                               text="Ваша смертная линия {} наступит через {}.".format(data['text'], date, notif_date) +
-                                     (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(notif_date)
-                                     if notif_date != "" else ""))
+                                     text="Ваша смертная линия {} наступит через {}.".format(data['text'], date,
+                                                                                             notif_date) +
+                                          (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
+                                              notif_date)
+                                           if notif_date != "" else ""))
     await api.update_message_id(queue_id, mes.message_id)
     await api.create_queue_tasks(queue_id, data["group_id"])
-
-
 
 
 @dp.callback_query(F.data.in_(['custom']))
@@ -655,10 +684,9 @@ async def now_time(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-
 @dp.callback_query(F.data.in_(['one_hour']))
 async def next_hour(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.now()+datetime.timedelta(hours=1)
+    now = datetime.datetime.now() + datetime.timedelta(hours=1)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
@@ -677,9 +705,10 @@ async def tomorrow(call: CallbackQuery, state: FSMContext):
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
+
 @dp.callback_query(F.data.in_(['tomorrow']))
 async def tomorrow(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.now()+datetime.timedelta(days=1)
+    now = datetime.datetime.now() + datetime.timedelta(days=1)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
@@ -688,10 +717,9 @@ async def tomorrow(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-
 @dp.callback_query(F.data.in_(['week']))
 async def week(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.now()+datetime.timedelta(days=7)
+    now = datetime.datetime.now() + datetime.timedelta(days=7)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
@@ -702,17 +730,18 @@ async def week(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['2week']))
 async def two_week(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.now()+datetime.timedelta(days=14)
+    now = datetime.datetime.now() + datetime.timedelta(days=14)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
     await state.set_state(States.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
+
 
 @dp.callback_query(F.data.in_(['one_month']))
 async def one_month(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.today()+ relativedelta(months=1)
+    now = datetime.datetime.today() + relativedelta(months=1)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
@@ -720,9 +749,10 @@ async def one_month(call: CallbackQuery, state: FSMContext):
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
+
 @dp.callback_query(F.data.in_(['half_year']))
 async def one_month(call: CallbackQuery, state: FSMContext):
-    now = datetime.datetime.today()+ relativedelta(months=6)
+    now = datetime.datetime.today() + relativedelta(months=6)
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
@@ -735,17 +765,17 @@ async def short_cut(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     data = await state.get_data()
     if data["event_type"] == EventType.QUEUE:
-        builder.button(text="Сейчас",callback_data="now")
-        builder.button(text="Через час",callback_data="one_hour")
-        builder.button(text="Сегодня",callback_data="today")
-        builder.button(text="Завтра",callback_data="tomorrow")
-        builder.button(text="Задать самостоятельно",callback_data="custom")
+        builder.button(text="Сейчас", callback_data="now")
+        builder.button(text="Через час", callback_data="one_hour")
+        builder.button(text="Сегодня", callback_data="today")
+        builder.button(text="Завтра", callback_data="tomorrow")
+        builder.button(text="Задать самостоятельно", callback_data="custom")
     elif data["event_type"] == EventType.DEADLINE:
-        builder.button(text="Через неделю",callback_data="week")
-        builder.button(text="Через 2 недели",callback_data="2week")
-        builder.button(text="Через месяц",callback_data="one_month")
-        builder.button(text="Через полгода",callback_data="half_year")
-        builder.button(text="Задать самостоятельно",callback_data="custom")
+        builder.button(text="Через неделю", callback_data="week")
+        builder.button(text="Через 2 недели", callback_data="2week")
+        builder.button(text="Через месяц", callback_data="one_month")
+        builder.button(text="Через полгода", callback_data="half_year")
+        builder.button(text="Задать самостоятельно", callback_data="custom")
     builder.adjust(2)
     await message.answer("Выберите время", reply_markup=builder.as_markup())
 
@@ -780,7 +810,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await putInDb(message, state)
         elif st == States.tz:
             res = await api.change_tz(message.chat.id, message.text)
-            if res["status"]=="OK":
+            if res["status"] == "OK":
                 await state.clear()
             await message.answer(res["message"])
         elif st == States.renameQueue:
@@ -841,7 +871,7 @@ async def send_ready(event_id, thread_id, group_id, message):
         builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
         builder.adjust(1)
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
-                                reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+                                  reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
     await api.update_message_id(event_id, mess.message_id)
 
 
@@ -850,17 +880,6 @@ async def send_notification(queue_id, thread_id, group_id, message):
     await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
     await api.update_message_id(queue_id, a.message_id)
-
-
-# async def scheduler():
-#     while True:
-#         already_queue = logic.already_queue()
-#         hour_not = logic.get_queue_notif()
-#         for i in already_queue:
-#             await queue_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
-#         for i in hour_not:
-#             await queue_notif_send(i["queue_id"], i["thread_id"], i["group_id"], i["message"])
-#         await asyncio.sleep(20)
 
 
 async def render_queue(queue_id: int, private: bool):
@@ -893,7 +912,8 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
                 pass
             await call.answer()
         else:
-            await call.answer(url="https://t.me/{}?start=queue_add{}".format(await api.get_bot_name(bot), callback_data.queueID))
+            await call.answer(
+                url="https://t.me/{}?start=queue_add{}".format(await api.get_bot_name(bot), callback_data.queueID))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
@@ -902,6 +922,7 @@ async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     if result == 'Incorrect':
         await call.answer("Вы мертвы")
     # Здесь был render_queue
+
 
 @dp.callback_query(FindMyself.filter(F.queueID != 0))
 async def get_number(call: CallbackQuery, callback_data: FindMyself):
@@ -913,22 +934,21 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
         await call.answer("Еблан, а в очередь встать не судьба??????")
 
 
-
 @dp.message(F.new_chat_member)
 async def bot_add_to_group(message: types.Message):
-    if (await bot.get_me()).id==message.new_chat_member['id']:
+    if (await bot.get_me()).id == message.new_chat_member['id']:
         await cmd_startgroup(message)
+
 
 @dp.message(F.left_chat_participant)
 async def bot_delete_from_group(message: types.Message):
-    if (await bot.get_me()).id==message.left_chat_participant['id']:
+    if (await bot.get_me()).id == message.left_chat_participant['id']:
         print("Хуй")
         await api.delete_group(message.chat.id)
 
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    # asyncio.create_task(scheduler())
     await dp.start_polling(bot)
 
 
