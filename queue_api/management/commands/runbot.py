@@ -1,8 +1,8 @@
 from django.core.management.base import BaseCommand
 import asyncio
-import bot
+from bot import main
 
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        asyncio.run(bot.main())
+        asyncio.run(main())

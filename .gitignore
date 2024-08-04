@@ -9,3 +9,4 @@ backup.sql
 .idea
 celerybeat-schedule
 static/
+bot.session
