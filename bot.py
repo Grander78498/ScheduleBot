@@ -197,7 +197,7 @@ async def cmd_startgroup(message: types.Message) -> None:
             d.append(userId)
             names.append(name)
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
-        result = task_get_users.delay(message.chat.id)
+        result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
         users = result.get()
         for user in users:
             await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
