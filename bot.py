@@ -207,7 +207,7 @@ async def cmd_startgroup(message: types.Message) -> None:
 async def cmd_start(message: types.Message) -> None:
     if message.chat.type == "private":
         if len(str(message.text).split()) > 1:
-            if str(message.text).split()[1].startswith("add_queue"):
+            if str(message.text).split()[1].startswith("queue_add"):
                 queueID = int(str(message.text).split()[1][8:])
                 await api.save_user(message.chat.id, message.from_user.full_name)
                 await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
