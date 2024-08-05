@@ -1,3 +1,8 @@
+"""
+Функции, которые вызываются при обработке запроса на перемещение в очереди
+"""
+
+
 from .imports import *
 from .queue_management import get_queue_position
 from .celery_calls import send_render_task

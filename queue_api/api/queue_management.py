@@ -1,3 +1,8 @@
+"""
+Функции, напрямую управляющие очередями
+"""
+
+
 from .imports import *
 from .celery_calls import send_render_task
 

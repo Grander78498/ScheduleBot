@@ -1,3 +1,8 @@
+"""
+Функции, которые обновляют значения полей в различных таблицах
+"""
+
+
 from .imports import *
 from .utils import check_timezone
 

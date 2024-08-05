@@ -1,3 +1,8 @@
+"""
+Функции, отвечающие за создание записей в различных таблицах
+"""
+
+
 from .imports import *
 from .utils import print_date_diff, EventType
 

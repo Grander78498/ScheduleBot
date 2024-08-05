@@ -1,3 +1,8 @@
+"""
+Функции, создающие задачи в celery
+"""
+
+
 from .imports import *
 
 
