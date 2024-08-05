@@ -195,12 +195,12 @@ async def cmd_startgroup(message: types.Message) -> None:
             names.append(name)
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
         result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
+        await message.answer(
+            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
         users = result.get()
         for user in users:
             await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
                                         False, message.chat.title, message.message_thread_id)
-        await message.answer(
-            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
 @dp.message(Command("start"))
@@ -208,7 +208,7 @@ async def cmd_start(message: types.Message) -> None:
     if message.chat.type == "private":
         if len(str(message.text).split()) > 1:
             if str(message.text).split()[1].startswith("queue_add"):
-                queueID = int(str(message.text).split()[1][8:])
+                queueID = int(str(message.text).split()[1][9:])
                 await api.save_user(message.chat.id, message.from_user.full_name)
                 await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
                 # Здесь был render queue
