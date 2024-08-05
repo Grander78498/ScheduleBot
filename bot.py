@@ -3,6 +3,7 @@ import logging
 import aiogram
 import datetime
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 
 from queue_api import api
 from aiogram import Bot, Dispatcher, types
@@ -19,12 +20,8 @@ from aiogram.filters.callback_data import CallbackData
 from config import API_TOKEN
 from queue_api.api import EventType
 
-
-import asyncio
-
-
-
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 bot = Bot(token=API_TOKEN)
 
 dp = Dispatcher()
@@ -948,6 +945,7 @@ async def bot_delete_from_group(message: types.Message):
 
 async def main():
     logging.basicConfig(level=logging.INFO)
+    logger.info(f"DEBUG = {settings.DEBUG}")
     await dp.start_polling(bot)
 
 
