@@ -6,6 +6,9 @@
 from .imports import *
 
 
+telethon_event_loop = asyncio.new_event_loop()
+
+
 class EventType(Enum):
     QUEUE = 1
     DEADLINE = 2

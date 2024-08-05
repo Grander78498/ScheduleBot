@@ -7,5 +7,5 @@ HOST = '127.0.0.1'
 PORT = '5432'
 USER = 'postgres'
 PASSWORD = 'postgres'
-DBNAME = 'queue_db'
+DBNAME = 'project_db'
 API_TOKEN = os.getenv("BOT_TOKEN")
