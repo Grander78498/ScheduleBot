@@ -3,10 +3,10 @@ __MACOSX
 venv
 .DS_Store
 __pycache__
-venv
 .env
 backup.sql
 .idea
 celerybeat-schedule
 static/
 bot.session
+*.log
