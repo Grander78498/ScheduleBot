@@ -165,7 +165,9 @@ async def get_event_type_by_id(event_id) -> EventType:
 
 
 async def get_message_id(event_id: int, chat_id: int):
-    message = await Message.objects.aget(event=event_id, chat_id=chat_id)
+    message, created = await Message.objects.aget_or_create(event_id=event_id, chat_id=chat_id)
+    if created:
+        return None
     return message.message_id
 
 

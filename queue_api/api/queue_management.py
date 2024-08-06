@@ -52,7 +52,6 @@ async def print_queue(queue_id: int, private: bool, bot_name: str):
     wrong_symbols = './()=_'
     for symbol in wrong_symbols:
         res_string = res_string.replace(symbol, f"\\{symbol}")
-    print(res_string)
     return queue.group_id, res_string, message_list
 
 
@@ -81,7 +80,6 @@ async def print_private_queue(queue_id: int, user_id: int, bot_name: str):
     wrong_symbols = './()=_'
     for symbol in wrong_symbols:
         res_string = res_string.replace(symbol, f"\\{symbol}")
-    print(res_string)
     return queue.group_id, res_string, message_list
 
 
@@ -122,21 +120,24 @@ async def rename_queue(queue_id: int, message: str):
 
 async def get_all_queues(user_id: int):
     user = await TelegramUser.objects.aget(pk=user_id)
-    queue_list = [queue async for queue in user.queue.all().order_by('date')]
+    queue_list = [queue async for queue in user.user_queue.all().order_by('date')]
     creator_list = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
     if len(set(queue_list).union(set(creator_list))) == 0:
         return {"status": 404, "message": 'У вас нет очередей('}
     res = 'Ваши очереди:\n'
-    for index, queue in enumerate(queue_list, 1):
+    for index, queue in enumerate(list(set(queue_list).union(set(creator_list))), 1):
         res += str(index) + '. '
         res += queue.text + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         user = await TelegramUser.objects.aget(pk=user_id)
         res += 'Название группы: ' + group.name + '\n'
-        res += f'Статус: {"создатель" if queue.creator_id == user_id else "участник"}'
+        res += f'Статус: {"создатель" if queue.creator_id == user_id else "участник"}\n'
         my_date = (queue.date + timedelta(hours=user.tz)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
+    wrong_symbols = './()=_-'
+    for symbol in wrong_symbols:
+        res = res.replace(symbol, f"\\{symbol}")
     return {"status": "OK", "data": [{"id": queue.pk, "name": queue.text, "is_creator": queue.creator_id == user_id}
         for queue in list(set(queue_list).union(set(creator_list)))], "message":res}
     # return ([queue.pk for queue in queue_list], len(queue_list),

@@ -453,7 +453,7 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
         names = [queue["name"] for queue in _dict["data"]]
         is_creators = [queue["is_creator"] for queue in _dict["data"]]
         st = _dict["message"]
-        r = await call.message.answer(st)
+        r = await call.message.answer(st, parse_mode='MarkdownV2')
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
@@ -468,19 +468,20 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
     _dict = await api.get_all_queues(call.from_user.id)
     status = _dict["status"]
-    r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id, message_id=callback_data.messageID)
+    r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id,
+                                    message_id=callback_data.messageID, parse_mode='MarkdownV2')
     if status!="OK":
         await call.message.answer(_dict["message"])
         uilder = InlineKeyboardBuilder()
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
                                             reply_markup=uilder.as_markup())
     else:
+        await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
         lenq = len(_dict["data"])
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
         is_creators = [queue["is_creator"] for queue in _dict["data"]]
         st = _dict["message"]
-        r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
@@ -495,13 +496,18 @@ async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueL
 @dp.callback_query(SimpleQueueSelectCallback.filter(F.queueID != 0))
 async def SimpleQueueChosen(call: CallbackQuery, callback_data: SimpleQueueSelectCallback):
     message_id = await api.get_message_id(callback_data.queueID, call.from_user.id)
-    print(message_id)
-    _,string,_ = api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
+    _,string,_ = await api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
     if message_id is not None:
-        await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=callback_data.delete_message_id)
+        try:
+            await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=message_id,
+                                        parse_mode='MarkdownV2')
+        except Exception:
+            pass
+        await call.answer('Сообщение с этой очередью было изменено')
     else:
-        mes = await call.message.answer(string)
+        mes = await call.message.answer(string, parse_mode='MarkdownV2')
         await api.update_message_id(callback_data.queueID, mes.message_id, call.from_user.id)
+        await call.answer()
 
 
 
