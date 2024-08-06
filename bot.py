@@ -110,11 +110,15 @@ class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
     queue_id: int
 
 
-class QueueSelectCallback(CallbackData, prefix="qs"):
+class AdminQueueSelectCallback(CallbackData, prefix="aqs"):
     queueID: int
     delete_message_id: int
     queueName: str
 
+class SimpleQueueSelectCallback(CallbackData, prefix="sqs"):
+    queueID: int
+    delete_message_id: int
+    queueName: str
 
 class QueueSelectForSwapCallback(CallbackData, prefix="qss"):
     queueID: int
@@ -343,10 +347,15 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
 
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    queueList, lenq, st, names = await api.get_all_queues(call.from_user.id)
-    if lenq == 0:
-        await call.message.answer(st)
-    if lenq > 0:
+    _dict = await api.get_all_queues(call.from_user.id)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        lenq = len(_dict["data"])
+        queueList = [queue["id"] for queue in _dict["data"]]
+        names = [queue["name"] for queue in _dict["data"]]
+        st = _dict["message"]
         r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
@@ -434,16 +443,21 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    queueList, lenq, st, names = await api.get_all_queues(call.from_user.id)
-    if lenq == 0:
-        await call.message.answer(st)
-    if lenq > 0:
+    _dict = await api.get_all_queues(call.from_user.id)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        lenq = len(_dict["data"])
+        queueList = [queue["id"] for queue in _dict["data"]]
+        names = [queue["name"] for queue in _dict["data"]]
+        is_creators = [queue["is_creator"] for queue in _dict["data"]]
+        st = _dict["message"]
         r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
-                           callback_data=QueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id,
-                                                             queueName=names[i]))
+                           callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
         builder.adjust(4)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
@@ -452,26 +466,47 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
 async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
-    queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
-    r = await bot.edit_message_text(text=st, chat_id=call.message.chat.id, message_id=callback_data.messageID)
-    if lenq == 0:
+    _dict = await api.get_all_queues(call.from_user.id)
+    status = _dict["status"]
+    r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id, message_id=callback_data.messageID)
+    if status!="OK":
+        await call.message.answer(_dict["message"])
         uilder = InlineKeyboardBuilder()
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
                                             reply_markup=uilder.as_markup())
-    if lenq > 0:
+    else:
+        lenq = len(_dict["data"])
+        queueList = [queue["id"] for queue in _dict["data"]]
+        names = [queue["name"] for queue in _dict["data"]]
+        is_creators = [queue["is_creator"] for queue in _dict["data"]]
+        st = _dict["message"]
+        r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
-                           callback_data=QueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id,
-                                                             queueName=names[i]))
+                           callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
         builder.adjust(4)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
 
 
-@dp.callback_query(QueueSelectCallback.filter(F.queueID != 0))
-async def QueueChosen(call: CallbackQuery, callback_data: QueueSelectCallback):
+
+@dp.callback_query(SimpleQueueSelectCallback.filter(F.queueID != 0))
+async def SimpleQueueChosen(call: CallbackQuery, callback_data: SimpleQueueSelectCallback):
+    message_id = await api.get_message_id(callback_data.queueID, call.from_user.id)
+    print(message_id)
+    _,string,_ = api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
+    if message_id is not None:
+        await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=callback_data.delete_message_id)
+    else:
+        mes = await call.message.answer(string)
+        await api.update_message_id(callback_data.queueID, mes.message_id, call.from_user.id)
+
+
+
+@dp.callback_query(AdminQueueSelectCallback.filter(F.queueID != 0))
+async def AdminQueueChosen(call: CallbackQuery, callback_data: AdminQueueSelectCallback):
     builder = InlineKeyboardBuilder()
     builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID))
     builder.button(text="Удалить участника очереди",
@@ -784,7 +819,7 @@ async def echo(message: Message, state: FSMContext) -> None:
     st = await state.get_state()
     if message.chat.type == "private":
         if st == States.text:
-            res = api.check_text(message.text, 48)
+            res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 await state.update_data(text=message.text)
                 await short_cut(message, state)
@@ -813,7 +848,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await state.clear()
             await message.answer(res["message"])
         elif st == States.renameQueue:
-            res = api.check_text(message.text, 48)
+            res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 data = await state.get_data()
                 await api.rename_queue(data["renameQueue"], message.text)

@@ -138,7 +138,7 @@ async def get_all_queues(user_id: int):
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
     return {"status": "OK", "data": [{"id": queue.pk, "name": queue.text, "is_creator": queue.creator_id == user_id}
-            for queue in list(set(queue_list).union(set(creator_list)))]}
+        for queue in list(set(queue_list).union(set(creator_list)))], "message":res}
     # return ([queue.pk for queue in queue_list], len(queue_list),
     #         res, [queue.text for queue in queue_list])
 
