@@ -4,6 +4,7 @@
 
 
 from .imports import *
+from .utils import print_date_diff
 
 
 async def create_queue_tasks(event_id: int, group_id: int):
@@ -37,10 +38,21 @@ async def create_queue_tasks(event_id: int, group_id: int):
         )
     else:
         from bot import send_ready, send_notification
+        try:
+            getattr(event, "queue")
+            message = \
+                f"""НАПОМИНАНИЕ!!!
+            Очередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}
+            """
+        except Exception:
+            message = \
+                f"""НАПОМИНАНИЕ!!!
+                    До дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}
+                    """
         await asyncio.sleep(7)
-        await send_notification(event.pk, group.thread_id, group.pk, event.text)
+        await send_notification(event.pk, group.thread_id, group.pk, message)
         await asyncio.sleep(3)
-        await send_ready(event.pk, group.thread_id, group.pk, event.text)
+        await send_ready(event.pk, group.thread_id, group.pk)
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):

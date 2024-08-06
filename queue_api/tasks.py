@@ -14,8 +14,7 @@ celery_event_loop = asyncio.new_event_loop()
 def task_send_ready(event_id):
     event = Event.objects.get(pk=event_id)
     group = TelegramGroup.objects.get(pk=event.group_id)
-    celery_event_loop.run_until_complete(bot.send_ready(event.id, group.thread_id, group.tg_id,
-                                                        event.text))
+    celery_event_loop.run_until_complete(bot.send_ready(event.id, group.thread_id, group.tg_id))
 
 
 @shared_task(name="send_notif")
