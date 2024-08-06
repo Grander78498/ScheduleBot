@@ -165,5 +165,6 @@ async def get_event_type_by_id(event_id) -> EventType:
     return EventType.DEADLINE
 
 
-async def get_message_id(event_id: int):
-    return (await Event.objects.aget(pk=event_id)).message_id
+async def get_message_id(event_id: int, chat_id: int):
+    message = await Event.objects.aget(event=event_id, chat_id=chat_id)
+    return message.message_id
