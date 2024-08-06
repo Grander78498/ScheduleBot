@@ -150,6 +150,11 @@ async def delete_group(group_id: int):
     await group.adelete()
 
 
+async def delete_group_member(group_id: int, user_id: int):
+    member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
+    await member.adelete()
+
+
 async def check_admin(admin_id: int):
     groups = []
     async for group in TelegramGroup.objects.filter(telegramuser=admin_id, groupmember__is_admin=True):
