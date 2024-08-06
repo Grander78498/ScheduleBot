@@ -7,8 +7,8 @@ debug:
 
 celery:
 	sudo systemctl start redis
-	$(ENV_DIR)/celery -A django_queue beat -l info -f $(DIR)/logs/beat.log &
-	$(ENV_DIR)/celery -A django_queue worker -l info -f $(DIR)/logs/worker.log &
+	$(ENV_DIR)/celery -A django_queue beat -l info -f $(DIR)/beat.log &
+	$(ENV_DIR)/celery -A django_queue worker -l info -f $(DIR)/worker.log &
 
 prod: celery
 	$(PYTHON_EXEC) manage.py runbot --settings=django_queue.prod_settings
