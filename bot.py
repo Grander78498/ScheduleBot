@@ -891,7 +891,7 @@ async def echo(message: Message, state: FSMContext) -> None:
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
-async def send_ready(event_id, thread_id, group_id, message):
+async def send_ready(event_id, thread_id, group_id):
     builder = InlineKeyboardBuilder()
     queue_message_id = await api.get_message_id(event_id, group_id)
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
@@ -901,6 +901,7 @@ async def send_ready(event_id, thread_id, group_id, message):
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=event_id))
         builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
         builder.adjust(1)
+    _, message, _ = await api.print_queue(event_id, False, await get_bot_name())
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
                                   reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
     await api.update_message_id(event_id, mess.message_id, group_id)
