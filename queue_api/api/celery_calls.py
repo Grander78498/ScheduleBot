@@ -34,7 +34,7 @@ async def create_queue_tasks(event_id: int, group_id: int):
             task="send_ready",
             one_off=True,
             args=json.dumps([event.pk]),
-            expires=event.date + timedelta(seconds=10)
+            expires=event.date + timedelta(minutes=1)
         )
     else:
         from bot import send_ready, send_notification
