@@ -650,7 +650,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                           (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
                                               notif_date)
                                            if notif_date != "" else ""))
-    await api.update_message_id(queue_id, mes.message_id)
+    await api.update_message_id(queue_id, mes.message_id, data['group_id'])
     await api.create_queue_tasks(queue_id, data["group_id"])
 
 
@@ -868,14 +868,14 @@ async def send_ready(event_id, thread_id, group_id, message):
         builder.adjust(1)
     mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
                                   reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    await api.update_message_id(event_id, mess.message_id)
+    await api.update_message_id(event_id, mess.message_id, group_id)
 
 
 async def send_notification(queue_id, thread_id, group_id, message):
     mess_id = await api.get_message_id(queue_id)
     await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
-    await api.update_message_id(queue_id, a.message_id)
+    await api.update_message_id(queue_id, a.message_id, group_id)
 
 
 async def render_queue(queue_id: int, private: bool):

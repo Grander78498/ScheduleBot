@@ -21,7 +21,7 @@ async def create_queue_tasks(event_id: int, group_id: int):
         if time_diff >= timedelta(minutes=2):
             await PeriodicTask.objects.acreate(
                 clocked=clocked_notif,
-                name=f"{event.message} {event.pk} {group.name}",
+                name=f"{event.text} {event.pk} {group.name}",
                 task="send_notif",
                 one_off=True,
                 args=json.dumps([event.pk]),
@@ -29,7 +29,7 @@ async def create_queue_tasks(event_id: int, group_id: int):
             )
         await PeriodicTask.objects.acreate(
             clocked=clocked_queue,
-            name=f"Ready {event.message} {event.pk} {group.name}",
+            name=f"Ready {event.text} {event.pk} {group.name}",
             task="send_ready",
             one_off=True,
             args=json.dumps([event.pk]),
@@ -38,9 +38,9 @@ async def create_queue_tasks(event_id: int, group_id: int):
     else:
         from bot import send_ready, send_notification
         await asyncio.sleep(7)
-        await send_notification(event.pk, group.thread_id, group.pk, event.message)
+        await send_notification(event.pk, group.thread_id, group.pk, event.text)
         await asyncio.sleep(3)
-        await send_ready(event.pk, group.thread_id, group.pk, event.message)
+        await send_ready(event.pk, group.thread_id, group.pk, event.text)
 
 
 async def add_request_timer(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):

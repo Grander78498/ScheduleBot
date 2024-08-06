@@ -7,8 +7,11 @@ from .imports import *
 from .utils import check_timezone
 
 
-async def update_message_id(event_id: int, message_id: int):
-    await Event.objects.filter(pk=event_id).aupdate(message_id=message_id)
+async def update_message_id(event_id: int, message_id: int, chat_id: int):
+    event = await Event.objects.aget(pk=event_id)
+    message, _ = await Message.objects.aget_or_create(event=event, chat_id=chat_id)
+    message.message_id = message_id
+    await message.asave()
 
 
 async def update_started(tg_id: int, full_name: str, started: bool):

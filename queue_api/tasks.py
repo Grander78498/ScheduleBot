@@ -15,7 +15,7 @@ def task_send_ready(event_id):
     event = Event.objects.get(pk=event_id)
     group = TelegramGroup.objects.get(pk=event.group_id)
     celery_event_loop.run_until_complete(bot.send_ready(event.id, group.thread_id, group.tg_id,
-                                                        event.message))
+                                                        event.text))
 
 
 @shared_task(name="send_notif")
@@ -26,12 +26,12 @@ def task_send_notif(event_id):
         getattr(event, "queue")
         message = \
             f"""НАПОМИНАНИЕ!!!
-        Очередь {event.message} будет отправлена через {print_date_diff(timezone.now(), event.date)}
+        Очередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}
         """
     except Exception:
         message = \
             f"""НАПОМИНАНИЕ!!!
-                До дедлайна {event.message} осталось {print_date_diff(timezone.now(), event.date)}
+                До дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}
                 """
     celery_event_loop.run_until_complete(bot.send_notification(event.id, group.thread_id, group.tg_id, message))
 

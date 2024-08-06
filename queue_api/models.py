@@ -1,15 +1,20 @@
 from django.db import models
 
 
+class Message(models.Model):
+    event = models.ForeignKey('Event', on_delete=models.CASCADE)
+    message_id = models.BigIntegerField(null=True)
+    chat_id = models.BigIntegerField()
+
+
 class Event(models.Model):
-    message = models.CharField(max_length=512)
+    text = models.CharField(max_length=512)
     date = models.DateTimeField()
     creator = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
-    message_id = models.BigIntegerField(null=True)
 
     def __str__(self):
-        return self.message
+        return self.text
 
 
 class TelegramUser(models.Model):
