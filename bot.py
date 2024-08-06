@@ -976,6 +976,8 @@ async def bot_delete_from_group(message: types.Message):
     if (await bot.get_me()).id == message.left_chat_participant['id']:
         print("Хуй")
         await api.delete_group(message.chat.id)
+    else:
+        await api.delete_group_member(message.chat.id, message.left_chat_participant['id'])
 
 
 async def main():
