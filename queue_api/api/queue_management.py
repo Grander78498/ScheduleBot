@@ -5,6 +5,7 @@
 
 from .imports import *
 from .celery_calls import send_render_task
+from .utils import get_queue_link
 
 
 async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
@@ -23,29 +24,73 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     return {"started": user.is_started, "queue_member": not created}
 
 
-async def print_queue(queue_id: int, private: bool):
+async def print_queue(queue_id: int, private: bool, bot_name: str):
     queue = await Queue.objects.aget(pk=queue_id)
     members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.text}\n"
-    res_string += "__________________________\n".replace('_', '\_')
-    for index, member in enumerate(members, 1):
-        if index == len(members) - 1 and index > 10:
-            print('.................\n'.replace('.', '\.'))
-        if index <= 8 or (index <= 10 and len(members) <= 10) or (index >= len(members) - 1 and index > 10):
+    link = await get_queue_link(queue_id, bot_name)
+    res_string += f"Ссылка для присоединения: {link}\n"
+    res_string += "__________________________\n"
+    if private:
+        for index, member in enumerate(members, 1):
             user = await TelegramUser.objects.aget(pk=member.user_id)
-            res_string += (str(index) + '\. ')
-            res_string += f"{user.full_name[:32]}" + ("\.\.\." if len(user.full_name) > 32 else "")
-            if private:
-                res_string += f"\(`{member.pk}`\)"
+            res_string += (str(index) + '. ')
+            res_string += f"{user.full_name[:16]}" + ("..." if len(user.full_name) > 16 else "")
+            res_string += f"(`{member.pk}`)"
             res_string += "\n"
-    return queue.group_id, queue.message_id, res_string
+    else:
+        for index, member in enumerate(members, 1):
+            if index == len(members) - 1 and index > 10:
+                print('.................\n')
+            if index <= 8 or (index <= 10 and len(members) <= 10) or (index >= len(members) - 1 and index > 10):
+                user = await TelegramUser.objects.aget(pk=member.user_id)
+                res_string += (str(index) + '. ')
+                res_string += f"{user.full_name[:32]}" + ("..." if len(user.full_name) > 32 else "")
+                res_string += "\n"
+
+    message_list = [message.message_id async for message in queue.message_set.all()]
+    wrong_symbols = './()=_'
+    for symbol in wrong_symbols:
+        res_string = res_string.replace(symbol, f"\\{symbol}")
+    print(res_string)
+    return queue.group_id, res_string, message_list
+
+
+async def print_private_queue(queue_id: int, user_id: int, bot_name: str):
+    queue = await Queue.objects.aget(pk=queue_id)
+    group = await TelegramGroup.objects.aget(pk=queue.group_id)
+    members = [user async for user in queue.queuemember_set.order_by("pk")]
+    res_string = f"Название очереди: {queue.text}\n"
+    res_string += f"Название группы: {group.name}\n"
+    link = await get_queue_link(queue_id, bot_name)
+    res_string += f"Ссылка для присоединения: {link}\n"
+    res_string += "__________________________\n"
+    dots_added = False
+    for index, member in enumerate(members, 1):
+        if member.user_id == user_id or index == len(members) or index == 1:
+            user = await TelegramUser.objects.aget(pk=member.user_id)
+            res_string += (str(index) + '. ')
+            res_string += f"{user.full_name[:32]}" + ("..." if len(user.full_name) > 32 else "")
+            res_string += "\n"
+            if member.user_id == user_id:
+                dots_added = False
+        elif not dots_added:
+            res_string += "............."
+            dots_added = True
+    message_list = [message.message_id async for message in queue.message_set.all()]
+    wrong_symbols = './()=_'
+    for symbol in wrong_symbols:
+        res_string = res_string.replace(symbol, f"\\{symbol}")
+    print(res_string)
+    return queue.group_id, res_string, message_list
 
 
 async def delete_queue(queue_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
-    group_id, message_id = queue.group_id, queue.message_id
+    chat_list, message_list = ([message.chat_id async for message in queue.message_set.all()],
+                               [message.message_id async for message in queue.message_set.all()])
     await queue.adelete()
-    return group_id, message_id
+    return chat_list, message_list
 
 
 async def delete_queue_member(queue_member_id: str):
@@ -71,16 +116,16 @@ async def delete_queue_member_by_id(queue_id: int, tg_id: int):
 
 
 async def rename_queue(queue_id: int, message: str):
-    await Queue.objects.filter(pk=queue_id).aupdate(message=message)
+    await Queue.objects.filter(pk=queue_id).aupdate(text=message)
     await send_render_task(queue_id, False)
 
 
-async def print_all_queues(user_id: int, queue_list: list[Queue], is_admin: bool):
-    if len(queue_list) == 0 or queue_list[0].pk is None:
-        if is_admin:
-            return [], 0, 'у вас нет созданных очередей(', []
-        else:
-            return [], 0, 'у вас нет  очередей в которых вы состоите(', []
+async def get_all_queues(user_id: int):
+    user = await TelegramUser.objects.aget(pk=user_id)
+    queue_list = [queue async for queue in user.queue.all().order_by('date')]
+    creator_list = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
+    if len(set(queue_list).union(set(creator_list))) == 0:
+        return {"status": 404, "message": 'У вас нет очередей('}
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(queue_list, 1):
         res += str(index) + '. '
@@ -88,22 +133,25 @@ async def print_all_queues(user_id: int, queue_list: list[Queue], is_admin: bool
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         user = await TelegramUser.objects.aget(pk=user_id)
         res += 'Название группы: ' + group.name + '\n'
+        res += f'Статус: {"создатель" if queue.creator_id == user_id else "участник"}'
         my_date = (queue.date + timedelta(hours=user.tz)).strftime(
             '%Y-%m-%d %H:%M')
         res += 'Дата активации очереди: ' + my_date + '\n'
-    return ([queue.pk for queue in queue_list], len(queue_list),
-            res, [queue.text for queue in queue_list])
+    return {"status": "OK", "data": [{"id": queue.pk, "name": queue.text, "is_creator": queue.creator_id == user_id}
+            for queue in list(set(queue_list).union(set(creator_list)))]}
+    # return ([queue.pk for queue in queue_list], len(queue_list),
+    #         res, [queue.text for queue in queue_list])
 
 
-async def get_creator_queues(user_id: int):
-    creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
-    return await print_all_queues(user_id, creator_queues, True)
+# async def get_creator_queues(user_id: int):
+#     creator_queues = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
+#     return await print_all_queues(user_id, creator_queues, True)
 
 
-async def get_user_queues(tg_id: int):
-    user = await TelegramUser.objects.aget(pk=tg_id)
-    user_queues = [queue async for queue in user.queue.all().order_by('date')]
-    return await print_all_queues(tg_id, user_queues, False)
+# async def get_user_queues(tg_id: int):
+#     user = await TelegramUser.objects.aget(pk=tg_id)
+#     user_queues = [queue async for queue in user.queue.all().order_by('date')]
+#     return await print_all_queues(tg_id, user_queues, False)
 
 
 async def remove_first(queue_id: int):

@@ -5,8 +5,7 @@
 
 from .imports import *
 
-
-telethon_event_loop = asyncio.new_event_loop()
+# telethon_event_loop = asyncio.new_event_loop()
 
 
 class EventType(Enum):
@@ -121,10 +120,6 @@ def check_timezone(tz):
     return bool(re.fullmatch(r'-?\d', tz))
 
 
-async def get_bot_name(bot):
-    return (await bot.get_me()).username
-
-
 def check_text(text: str, max_len):
     if len(text.encode('utf-8')) >= max_len:
         return {'status': 'NO', 'message': 'Насрал много байтов - повтори ввод названия'}
@@ -140,9 +135,13 @@ async def get_group_link(group_id: int):
     return link
 
 
-async def get_queue_link(queue_id: int):
+async def get_queue_message_link(queue_id: int, user_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
-    link = f"https://t.me/c/{int(str(queue.group_id)[4:])}/{queue.message_id}"
+    group = await TelegramGroup.objects.aget(pk=queue.group_id)
+    if user_id not in [user.pk async for user in group.telegramuser_set.all()]:
+        return ""
+    message = await Message.objects.aget(event_id=queue.pk, chat_id=group.pk)
+    link = f"https://t.me/c/{int(str(queue.group_id)[4:])}/{message.message_id}"
     return link
 
 
@@ -166,5 +165,9 @@ async def get_event_type_by_id(event_id) -> EventType:
 
 
 async def get_message_id(event_id: int, chat_id: int):
-    message = await Event.objects.aget(event=event_id, chat_id=chat_id)
+    message = await Message.objects.aget(event=event_id, chat_id=chat_id)
     return message.message_id
+
+
+async def get_queue_link(queue_id: int, bot_name: str):
+    return "https://t.me/{}?start=queue_add{}".format(bot_name, queue_id)

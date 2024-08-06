@@ -24,6 +24,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 bot = Bot(token=API_TOKEN)
 
+
+async def get_bot_name():
+    return (await bot.get_me()).username
+
 dp = Dispatcher()
 
 voted = {}
@@ -76,13 +80,6 @@ class MonthCallback(CallbackData, prefix="month"):
 
 class DayCallback(CallbackData, prefix="day"):
     day: int
-
-
-class StopVoteCallback(CallbackData, prefix="stop"):
-    ID: int
-    message_id: int
-    queueID: int
-    thread_id: int | None
 
 
 class DeleteFirstQueueCallback(CallbackData, prefix="delete_first"):
@@ -184,7 +181,6 @@ async def change_topic(message: types.Message):
 
 async def cmd_startgroup(message: types.Message) -> None:
     if message.chat.type == "supergroup":
-        from queue_api.tasks import task_get_users
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
         names = []
@@ -194,13 +190,18 @@ async def cmd_startgroup(message: types.Message) -> None:
             d.append(userId)
             names.append(name)
         await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
-        result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
-        await message.answer(
-            "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
-        users = result.get()
-        for user in users:
-            await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
-                                        False, message.chat.title, message.message_thread_id)
+        if not settings.DEBUG:
+            from queue_api.tasks import task_get_users
+            result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
+            await message.answer(
+                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
+            users = result.get()
+            for user in users:
+                await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
+                                            False, message.chat.title, message.message_thread_id)
+        else:
+            await message.answer(
+                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
 @dp.message(Command("start"))
@@ -212,15 +213,16 @@ async def cmd_start(message: types.Message) -> None:
                 await api.save_user(message.chat.id, message.from_user.full_name)
                 await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
                 # Здесь был render queue
-                link = await api.get_queue_link(queueID)
+                link = await api.get_queue_message_link(queueID, message.from_user.id)
                 return_builder = InlineKeyboardBuilder()
-                return_builder.button(text="Вернуться в группу", url=link)
+                if len(link) != 0:
+                    return_builder.button(text="Вернуться в группу", url=link)
                 await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу",
                                url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(
-                                   await api.get_bot_name(bot)))
+                                   await get_bot_name()))
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer(
@@ -341,7 +343,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
 
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    queueList, lenq, st, names = await api.get_user_queues(call.from_user.id)
+    queueList, lenq, st, names = await api.get_all_queues(call.from_user.id)
     if lenq == 0:
         await call.message.answer(st)
     if lenq > 0:
@@ -384,7 +386,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
     status = await api.check_requests(call.from_user.id, callback_data.queueID)
     if not status["in"] and not status["out"]:
-        _, _, text = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
+        _, _, text = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
         queue_list_message = await call.message.answer(text, parse_mode="MarkdownV2")
         simple_message = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
         await state.set_state(States.swap)
@@ -432,7 +434,7 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    queueList, lenq, st, names = await api.get_creator_queues(call.from_user.id)
+    queueList, lenq, st, names = await api.get_all_queues(call.from_user.id)
     if lenq == 0:
         await call.message.answer(st)
     if lenq > 0:
@@ -501,7 +503,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
-    _, _, message = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
+    _, _, message = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
     await call.message.answer(text=message, parse_mode='MarkdownV2')
     await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
@@ -519,13 +521,14 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 
 @dp.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    group_id, message_id = await api.delete_queue(callback_data.queueID)
-    try:
-        await bot.delete_message(chat_id=group_id, message_id=message_id)
-        await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
-        await call.answer("Очередь удалена")
-    except Exception:
-        await call.answer("Очередь перестала быть активной, но удалить сообщение не удалось")
+    await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
+    chat_list, message_list = await api.delete_queue(callback_data.queueID)
+    for chat_id, message_id in zip(chat_list, message_list):
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception:
+            await call.answer("Очередь перестала быть активной, но удалить сообщение не удалось")
+    await call.answer("Очередь удалена")
 
 
 @dp.callback_query(DayCallback.filter(F.day != 0))
@@ -847,15 +850,6 @@ async def echo(message: Message, state: FSMContext) -> None:
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
-@dp.callback_query(StopVoteCallback.filter(F.ID != 0))
-async def stopvoting(call: CallbackQuery, callback_data: StopVoteCallback):
-    st = await api.print_queue(callback_data.queueID, call.message.chat.type == "private")
-    await bot.send_message(chat_id=callback_data.ID, text=st, message_thread_id=callback_data.thread_id,
-                           parse_mode='MarkdownV2')
-    await bot.delete_message(chat_id=callback_data.ID, message_id=callback_data.message_id)
-    await call.answer()
-
-
 async def send_ready(event_id, thread_id, group_id, message):
     builder = InlineKeyboardBuilder()
     queue_message_id = await api.get_message_id(event_id, group_id)
@@ -880,14 +874,15 @@ async def send_notification(queue_id, thread_id, group_id, message):
 
 async def render_queue(queue_id: int, private: bool):
     try:
-        group_id, queue_message_id, queue = await api.print_queue(queue_id, private)
+        group_id, queue, message_list = await api.print_queue(queue_id, private, await get_bot_name())
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
         builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
         builder.adjust(1)
-        await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                    reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        for queue_message_id in message_list:
+            await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
+                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
     except Exception as ex:
         print(ex)
 
@@ -908,8 +903,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
                 pass
             await call.answer()
         else:
-            await call.answer(
-                url="https://t.me/{}?start=queue_add{}".format(await api.get_bot_name(bot), callback_data.queueID))
+            await call.answer(url=await api.get_queue_link(callback_data.queueID, await get_bot_name()))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))

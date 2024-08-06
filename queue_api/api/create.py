@@ -43,10 +43,10 @@ async def create_queue_or_deadline(data_dict):
     group = await TelegramGroup.objects.aget(pk=group_id)
     is_queue = data_dict["event_type"] == EventType.QUEUE
     if is_queue:
-        queue = await Queue.objects.acreate(message=message, date=date, creator=creator, group=group)
+        queue = await Queue.objects.acreate(text=message, date=date, creator=creator, group=group)
         event_id = queue.pk
     else:
-        deadline = await Deadline.objects.acreate(message=message, date=date, creator=creator, group=group)
+        deadline = await Deadline.objects.acreate(text=message, date=date, creator=creator, group=group)
         event_id = deadline.pk
     time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):
