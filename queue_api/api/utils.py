@@ -108,7 +108,7 @@ async def check_time(time, year, month, day, user_id):
     given_date = datetime.strptime(
         f"{year}-{str(month).rjust(2, '0')}-{str(day).rjust(2, '0')} {time}+{tz}",
         "%Y-%m-%d %H:%M%z")
-    if given_date >= current_date or (current_date - given_date).total_seconds() >= 60:
+    if given_date >= current_date or (current_date - given_date).total_seconds() <= 60:
         return "It's okay it's fine"
     return "EarlyQueueError"
 
