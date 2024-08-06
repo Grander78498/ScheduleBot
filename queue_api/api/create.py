@@ -59,7 +59,7 @@ async def create_queue_or_deadline(data_dict):
         queue_notif_date = date - 0.5 * time_diff
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            print_date_diff(timezone.now(), date), event_id, print_date_diff(timezone.now(), queue_notif_date))
+            print_date_diff(timezone.now(), date), event_id, print_date_diff(queue_notif_date, date))
 
 
 async def save_user(tg_id: int, full_name: str):
