@@ -42,6 +42,7 @@ class GroupMember(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     groups = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
     is_admin = models.BooleanField(default=False)
+    is_main_admin = models.BooleanField(default=False)
 
 
 class Queue(Event):

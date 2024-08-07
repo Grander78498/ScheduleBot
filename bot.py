@@ -705,7 +705,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
             await api.create_queue_tasks(queue_id, data["group_id"])
         else:
             await message.answer("Так как вы не являетесь админом этой группе, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
-            await api.get_group_admin(data['group_id'])
+            print(await api.get_group_admin(data['group_id']))
 
 
 @dp.callback_query(F.data.in_(['custom']))
