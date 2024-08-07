@@ -39,8 +39,11 @@ async def check_main_admin(group_id: int, admin_id: int):
 
 
 async def check_possible_main_admin(group_id: int, admin_id: int):
-    is_admin = (await GroupMember.objects.aget(user_id=admin_id, groups_id=group_id)).is_admin
-    if is_admin:
-        return {"status": "OK"}
-    else:
-        return {"status": "ERROR", "message": "Пытаешься назначить огузка шефом???????"}
+    try:
+        is_admin = (await GroupMember.objects.aget(user_id=admin_id, groups_id=group_id)).is_admin
+        if is_admin:
+            return {"status": "OK"}
+        else:
+            return {"status": "ERROR", "message": "Пытаешься назначить огузка шефом???????"}
+    except Exception:
+        return {"status": "ERROR", "message": "Долбаёба со стороны нанимаешь??????"}
