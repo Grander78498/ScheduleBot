@@ -227,14 +227,15 @@ async def cmd_start(message: types.Message) -> None:
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу",
-                               url="https://t.me/{}?startgroup=L&admin=pin_messages+delete_messages".format(
-                                   await get_bot_name()))
+                               url="https://t.me/{}?startgroup={}&admin=pin_messages+delete_messages".format(await get_bot_name(), message.chat.id))
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer(
                 "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline",
                 reply_markup=builder_add.as_markup())
     else:
+        main_admin_id = int(message.text.split()[1])
+        await api.set_main_admin(message.chat.id, main_admin_id, message.chat.title, message.message_thread_id)
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
@@ -828,6 +829,11 @@ async def short_cut(message: Message, state: FSMContext):
         builder.button(text="Задать самостоятельно", callback_data="custom")
     builder.adjust(2)
     await message.answer("Выберите время", reply_markup=builder.as_markup())
+
+
+# @dp.message()
+# async def handle_message(message: types.Message):
+#     print(message)
 
 
 @dp.message(F.text)

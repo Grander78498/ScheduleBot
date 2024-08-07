@@ -33,6 +33,7 @@ class TelegramGroup(models.Model):
     tg_id = models.BigIntegerField(primary_key=True)
     name = models.CharField(max_length=128)
     thread_id = models.BigIntegerField(null=True)
+    main_admin = models.ForeignKey('TelegramUser', on_delete=models.RESTRICT, null=True)
 
     def __str__(self):
         return self.name
@@ -42,7 +43,6 @@ class GroupMember(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     groups = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
     is_admin = models.BooleanField(default=False)
-    is_main_admin = models.BooleanField(default=False)
 
 
 class Queue(Event):

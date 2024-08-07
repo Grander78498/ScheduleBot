@@ -170,9 +170,8 @@ async def get_user_groups(user_id: int):
 
 
 async def get_group_admin(group_id: int):
-    admin = GroupMember.objects.select_related("user").aget(groups_id=group_id, is_main_admin=True)
-    return admin.user_id, admin.user.full_name
-
+    admin = (await TelegramGroup.objects.select_related("main_admin").aget(pk=group_id)).main_admin
+    return admin.pk, admin.full_name
 
 
 async def get_event_type_by_id(event_id) -> EventType:
