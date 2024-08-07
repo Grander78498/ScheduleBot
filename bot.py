@@ -65,6 +65,7 @@ class States(StatesGroup):
     tz = State()
     event_type = State()
     deadline_roots = State()
+    set_main_admin = State()
 
 
 class ReturnToQueueList(CallbackData, prefix="return"):
@@ -158,6 +159,13 @@ async def print_info_queue(message: types.Message):
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
     builder.adjust(1)
     await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+
+@dp.message(Command("set_main_admin"))
+async def set_main_admin(message: types.Message, state: FSMContext):
+    if message.chat.type=="private":
+        await message.answer("Данная команда доступна только в группе, где главный администратор может пеереназначить свои полномочия на другого")
+    elif message.chat.type == "supergroup":
+        await state.set_state(States.set_main_admin)
 
 
 @dp.message(Command("deadline"))
@@ -831,9 +839,20 @@ async def short_cut(message: Message, state: FSMContext):
     await message.answer("Выберите время", reply_markup=builder.as_markup())
 
 
-# @dp.message()
-# async def handle_message(message: types.Message):
-#     print(message)
+
+@dp.message(F.forward_from)
+async def print_mes(message: Message, state: FSMContext):
+    st = await state.get_state()
+    if message.chat.type=="supergroup":
+        if st == States.set_main_admin:
+            print("OK")
+            current_main_admin_id = message.from_user.id
+            new_main_admin_id = message.forward_from.id
+            await state.clear()
+        else:
+            print("Ебля")
+    
+
 
 
 @dp.message(F.text)
@@ -887,6 +906,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
+        
         elif st == States.deleteQueueMember:
             data = await state.get_data()
             result = await api.delete_queue_member(message.text)
