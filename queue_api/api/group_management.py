@@ -47,3 +47,8 @@ async def check_possible_main_admin(group_id: int, admin_id: int):
             return {"status": "ERROR", "message": "Пытаешься назначить огузка шефом???????"}
     except Exception:
         return {"status": "ERROR", "message": "Долбаёба со стороны нанимаешь??????"}
+
+
+async def get_group_name(group_id: int):
+    group = await TelegramGroup.objects.aget(tg_id=group_id)
+    return group.name

@@ -105,7 +105,7 @@ class FindMyself(CallbackData, prefix="FindMyself"):
     queueID: int
 
 
-class RemoveSwapRequest(CallbackData, prefix="Removeswaprequest"):
+class RemoveSwapRequest(CallbackData, prefix="Rsq"):
     first_user_id: int
     second_user_id: int
     first_m_id: int
@@ -141,7 +141,7 @@ class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
     queueID: int
 
 
-class SwapCallback(CallbackData, prefix="swap"):
+class SwapCallback(CallbackData, prefix="sp"):
     message_type: str
     first_user_id: int
     first_tg_user_id: int
@@ -149,6 +149,13 @@ class SwapCallback(CallbackData, prefix="swap"):
     second_user_id: int
     message2_id: int
     message1_id: int
+
+class DeadLineAcceptCallback(CallbackData, prefix="da"):
+    deadline_id: int
+    user_id: int
+    group_id: int
+    solution: bool
+
 
 
 @dp.message(Command("queue"))
@@ -170,7 +177,11 @@ async def set_main_admin(message: types.Message, state: FSMContext):
             mes = await message.answer(res['message'])
             await asyncio.sleep(5)
             await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
+            await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+            await state.update_data(set_main_admin={"message_id":message.message_id, "status":"ERROR"})
+            await state.set_state(States.set_main_admin)
         else:
+            await state.update_data(set_main_admin={"message_id":message.message_id, "status":"OK"})
             await state.set_state(States.set_main_admin)
 
 
@@ -247,9 +258,7 @@ async def cmd_start(message: types.Message) -> None:
             await message.answer(
                 "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline",
                 reply_markup=builder_add.as_markup())
-    else:
-        main_admin_id = int(message.text.split()[1])
-        await api.set_main_admin(message.chat.id, main_admin_id, message.chat.title, message.message_thread_id)
+    elif message.chat.type == "supergroup":
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
@@ -388,7 +397,7 @@ async def swap(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.in_(['print_deadline']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     await call.answer("Заглушка")
-    await api.get_user_groups(call.from_user.id)
+#    await api.get_user_groups(call.from_user.id)
 
 
 @dp.callback_query(F.data.in_(['add_deadline']))
@@ -639,6 +648,25 @@ async def Month(call: CallbackQuery, callback_data: MonthCallback, state: FSMCon
     await call.answer()
 
 
+
+@dp.callback_query(DeadLineAcceptCallback.filter(F.deadline_id != 0))
+async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCallback):
+    if callback_data.solution:
+        await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос выполнен")
+        group_id,text, thread_id, date, notif_date = await api.get_deadline_info(deadline_id)
+        mes = await bot.send_message(chat_id=group_id, message_thread_id=thread_id,
+                                         text="Ваша смертная линия {} наступит через {}.".format(text, date,
+                                                                                                 notif_date) +
+                                              (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
+                                                  notif_date)
+                                               if notif_date != "" else ""))
+        await api.update_message_id(deadline_id, mes.message_id,group_id)
+        await api.create_queue_tasks(deadline_id, group_id)
+    else:
+        await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос не был выполнен, сожалею")
+
+
+
 @dp.callback_query(YearCallback.filter(F.year != 0))
 async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMContext):
     if call.message.chat.type == "private":
@@ -707,8 +735,8 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.adjust(1)
+        thread_id, date, deadline_id, notif_date = await api.create_queue_or_deadline(data)
         if data["deadline_roots"]:
-            thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
             await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
             mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
                                          text="Ваша смертная линия {} наступит через {}.".format(data['text'], date,
@@ -716,11 +744,17 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                               (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
                                                   notif_date)
                                                if notif_date != "" else ""))
-            await api.update_message_id(queue_id, mes.message_id, data['group_id'])
-            await api.create_queue_tasks(queue_id, data["group_id"])
+            await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
+            await api.create_queue_tasks(deadline_id, data["group_id"])
         else:
             await message.answer("Так как вы не являетесь админом этой группе, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
-            print(await api.get_group_admin(data['group_id']))
+            admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
+            builder_admin = InlineKeyboardBuilder()
+            builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, group_id=data["group_id"]))
+            builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, group_id=data["group_id"]))
+            await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))), reply_markup=builder_admin.as_markup())
+
+
 
 
 @dp.callback_query(F.data.in_(['custom']))
@@ -851,16 +885,23 @@ async def print_mes(message: Message, state: FSMContext):
     st = await state.get_state()
     if message.chat.type=="supergroup":
         if st == States.set_main_admin:
+            data = await state.get_data()
             new_main_admin_id = message.forward_from.id
-            res = await api.check_possible_main_admin(message.chat.id, new_main_admin_id)
-            if res['status'] == 'ERROR':
-                mes = await message.answer(res['message'])
+            res_possible = await api.check_possible_main_admin(message.chat.id, new_main_admin_id)
+            if res_possible['status'] == 'ERROR':
+                mes = await message.answer(res_possible['message'])
+                await state.clear()
                 await asyncio.sleep(5)
                 await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=data["set_main_admin"]["message_id"])
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+            elif data['status'] == 'ERROR':
+                await state.clear()
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             else:
                 await api.set_main_admin(message.chat.id, new_main_admin_id,
                                          message.chat.title, message.message_thread_id)
-            await state.clear()
+                await state.clear()
     
 
 
@@ -1015,13 +1056,14 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
 @dp.message(F.new_chat_member)
 async def bot_add_to_group(message: types.Message):
     if (await bot.get_me()).id == message.new_chat_member['id']:
+        await api.set_main_admin(message.chat.id, message.from_user.id, message.chat.title, message.message_thread_id)
         await cmd_startgroup(message)
     elif not message.new_chat_member['is_bot']:
         full_name = message.new_chat_member['first_name'] + (" " + message.new_chat_member['last_name'] if 'last_name' in message.new_chat_member else '')
         await api.add_user_to_group(message.chat.id, message.new_chat_member['id'], full_name,
                                             False, message.chat.title, message.message_thread_id)
     else:
-        print(message)
+        await message.answer("Конкурент обнаружен")
 
 
 @dp.message(F.left_chat_participant)
@@ -1029,8 +1071,10 @@ async def bot_delete_from_group(message: types.Message):
     if (await bot.get_me()).id == message.left_chat_participant['id']:
         print("Хуй")
         await api.delete_group(message.chat.id)
-    else:
+    elif not message.left_chat_participant['is_bot']:
         await api.delete_group_member(message.chat.id, message.left_chat_participant['id'])
+    else:
+        await message.answer("Конкурент уничтожен")
 
 
 async def main():
