@@ -9,13 +9,13 @@ async def get_deadline_info(deadline_id: int):
     group = await TelegramGroup.objects.aget(pk=group_id)
     thread_id = group.thread_id
     date = print_date_diff(timezone.now(), deadline.date)
-    time_diff = date - timezone.now()
+    time_diff = deadline.date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return group_id, text, thread_id, date, ""
 
     if time_diff >= timedelta(hours=2):
-        queue_notif_date = date - timedelta(hours=1)
+        queue_notif_date = deadline.date - timedelta(hours=1)
     else:
-        queue_notif_date = date - 0.5 * time_diff
+        queue_notif_date = deadline.date - 0.5 * time_diff
 
-    return group_id, text, thread_id, date, print_date_diff(queue_notif_date, date)
+    return group_id, text, thread_id, date, print_date_diff(queue_notif_date, deadline.date)

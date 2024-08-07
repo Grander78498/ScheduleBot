@@ -13,7 +13,7 @@ class EventType(Enum):
     DEADLINE = 2
 
 
-def print_date_diff(date1, date2):
+def print_date_diff(date1, date2) -> str:
     # от 1 минуты до 1 часа - в минутах
     # от 1 часа до 6 часов - в 30 минутах
     # от 6 часов до суток - в часах
