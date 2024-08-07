@@ -3,10 +3,10 @@ from .utils import print_date_diff
 
 
 async def get_deadline_info(deadline_id: int):
-    deadline = await Deadline.objects.get(pk=deadline_id)
+    deadline = await Deadline.objects.aget(pk=deadline_id)
     group_id = deadline.group_id
     text = deadline.text
-    group = await TelegramGroup.objects.get(pk=group_id)
+    group = await TelegramGroup.objects.aget(pk=group_id)
     thread_id = group.thread_id
     date = print_date_diff(timezone.now(), deadline.date)
     time_diff = date - timezone.now()
