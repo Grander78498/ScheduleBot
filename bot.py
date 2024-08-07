@@ -660,9 +660,10 @@ async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCal
                                               (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
                                                   notif_date)
                                                if notif_date != "" else ""))
-        await api.update_message_id(callback_data.deadline_id, mes.message_id,group_id)
+        await api.update_message_id(callback_data.deadline_id, mes.message_id, group_id)
         await api.create_queue_tasks(callback_data.deadline_id, group_id)
     else:
+        await api.delete_deadline(callback_data.deadline_id)
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос не был выполнен, сожалею")
     await call.answer()
 

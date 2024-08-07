@@ -41,7 +41,7 @@ def print_date_diff(date1, date2) -> str:
             elif minutes % 10 in range(2, 5) and minutes not in range(12, 15):
                 ending = "ы"
 
-            if diff.seconds < 600:
+            if diff.seconds < 60 * 10:
                 seconds = diff.seconds % 60
                 seconds_ending = ""
                 if seconds % 10 == 1 and seconds != 11:
@@ -59,14 +59,15 @@ def print_date_diff(date1, date2) -> str:
             elif hours % 10 in range(2, 5) and hours not in range(12, 15):
                 ending = "а"
 
-            if diff.seconds < 3600 * 60:
+            if diff.seconds < 3600 * 6:
                 minutes = (diff.seconds // 60) % 60
-                minutes_ending = ""
-                if minutes % 10 == 1 and minutes != 11:
-                    minutes_ending = "у"
-                elif minutes % 10 in range(2, 5) and minutes not in range(12, 15):
-                    minutes_ending = "ы"
-                return f"{hours} час{ending} и {minutes} минут{minutes_ending}"
+                if minutes != 0:
+                    minutes_ending = ""
+                    if minutes % 10 == 1 and minutes != 11:
+                        minutes_ending = "у"
+                    elif minutes % 10 in range(2, 5) and minutes not in range(12, 15):
+                        minutes_ending = "ы"
+                    return f"{hours} час{ending} и {minutes} минут{minutes_ending}"
 
             return f"{hours} час{ending}"
     elif 1 <= diff.days < 2:

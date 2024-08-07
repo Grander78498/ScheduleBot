@@ -19,3 +19,8 @@ async def get_deadline_info(deadline_id: int):
         queue_notif_date = deadline.date - 0.5 * time_diff
 
     return group_id, text, thread_id, date, print_date_diff(queue_notif_date, deadline.date)
+
+
+async def delete_deadline(deadline_id: int):
+    deadline = await Deadline.objects.aget(pk=deadline_id)
+    await deadline.adelete()
