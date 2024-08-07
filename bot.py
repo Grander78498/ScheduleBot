@@ -153,7 +153,7 @@ class SwapCallback(CallbackData, prefix="sp"):
 class DeadLineAcceptCallback(CallbackData, prefix="da"):
     deadline_id: int
     user_id: int
-    group_id: int
+    message_id: int
     solution: bool
 
 
@@ -665,6 +665,7 @@ async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCal
     else:
         await api.delete_deadline(callback_data.deadline_id)
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос не был выполнен, сожалею")
+    await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.message_id)
     await call.answer()
 
 
@@ -752,9 +753,11 @@ async def putInDb(message: Message, state: FSMContext) -> None:
             await message.answer("Так как вы не являетесь админом этой группе, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
             admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
             builder_admin = InlineKeyboardBuilder()
-            builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, group_id=data["group_id"]))
-            builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, group_id=data["group_id"]))
-            await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))), reply_markup=builder_admin.as_markup())
+            m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
+            builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
+            builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
+            await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
+                                                reply_markup=builder_admin.as_markup())
 
 
 
