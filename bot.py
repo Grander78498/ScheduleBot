@@ -857,6 +857,9 @@ async def print_mes(message: Message, state: FSMContext):
                 mes = await message.answer(res['message'])
                 await asyncio.sleep(5)
                 await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
+            else:
+                await api.set_main_admin(message.chat.id, new_main_admin_id,
+                                         message.chat.title, message.message_thread_id)
             await state.clear()
     
 
