@@ -36,7 +36,7 @@ async def swap_places(first_member_id: int, second_member_id: int):
     await send_render_task(first.queue_id, False)
 
 
-async def handle_request(first_member_id: int, second_member_id: int, first_message_id: int, second_message_id: int):
+async def handle_request(first_member_id: int, second_member_id: str, first_message_id: int, second_message_id: int):
     first_member = await QueueMember.objects.aget(pk=first_member_id)
     second_member = await QueueMember.objects.aget(pk=second_member_id)
     await SwapRequest.objects.acreate(first_member=first_member, second_member=second_member, first_message_id=first_message_id, second_message_id=second_message_id)

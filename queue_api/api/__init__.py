@@ -9,3 +9,4 @@ from .queue_swap import *
 from .update import *
 from .utils import *
 from .group_management import *
+from .deadline_management import *

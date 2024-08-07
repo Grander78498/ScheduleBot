@@ -653,17 +653,18 @@ async def Month(call: CallbackQuery, callback_data: MonthCallback, state: FSMCon
 async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCallback):
     if callback_data.solution:
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос выполнен")
-        group_id,text, thread_id, date, notif_date = await api.get_deadline_info(deadline_id)
+        group_id, text, thread_id, date, notif_date = await api.get_deadline_info(callback_data.deadline_id)
         mes = await bot.send_message(chat_id=group_id, message_thread_id=thread_id,
                                          text="Ваша смертная линия {} наступит через {}.".format(text, date,
                                                                                                  notif_date) +
                                               (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
                                                   notif_date)
                                                if notif_date != "" else ""))
-        await api.update_message_id(deadline_id, mes.message_id,group_id)
-        await api.create_queue_tasks(deadline_id, group_id)
+        await api.update_message_id(callback_data.deadline_id, mes.message_id,group_id)
+        await api.create_queue_tasks(callback_data.deadline_id, group_id)
     else:
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос не был выполнен, сожалею")
+    await call.answer()
 
 
 
