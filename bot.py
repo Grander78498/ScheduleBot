@@ -163,9 +163,15 @@ async def print_info_queue(message: types.Message):
 @dp.message(Command("set_main_admin"))
 async def set_main_admin(message: types.Message, state: FSMContext):
     if message.chat.type=="private":
-        await message.answer("Данная команда доступна только в группе, где главный администратор может пеереназначить свои полномочия на другого")
+        await message.answer("Данная команда доступна только в группе")
     elif message.chat.type == "supergroup":
-        await state.set_state(States.set_main_admin)
+        res = await api.check_main_admin(message.chat.id, message.from_user.id)
+        if res['status'] == 'ERROR':
+            mes = await message.answer(res['message'])
+            await asyncio.sleep(5)
+            await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
+        else:
+            await state.set_state(States.set_main_admin)
 
 
 @dp.message(Command("deadline"))
@@ -845,12 +851,13 @@ async def print_mes(message: Message, state: FSMContext):
     st = await state.get_state()
     if message.chat.type=="supergroup":
         if st == States.set_main_admin:
-            print("OK")
-            current_main_admin_id = message.from_user.id
             new_main_admin_id = message.forward_from.id
+            res = await api.check_possible_main_admin(message.chat.id, new_main_admin_id)
+            if res['status'] == 'ERROR':
+                mes = await message.answer(res['message'])
+                await asyncio.sleep(5)
+                await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
             await state.clear()
-        else:
-            print("Ебля")
     
 
 

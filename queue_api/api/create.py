@@ -69,7 +69,6 @@ async def save_user(tg_id: int, full_name: str):
 
 
 async def set_main_admin(group_id: int, admin_id: int, group_name: str, thread_id: int):
-    print(f'Пиздец смерть {admin_id}')
     user = await TelegramUser.objects.aget(pk=admin_id)
     group, _ = await TelegramGroup.objects.aget_or_create(pk=group_id, name=group_name, thread_id=thread_id)
     group.main_admin = user
