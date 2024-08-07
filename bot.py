@@ -64,6 +64,7 @@ class States(StatesGroup):
     swap = State()
     tz = State()
     event_type = State()
+    deadline_roots = State()
 
 
 class ReturnToQueueList(CallbackData, prefix="return"):
@@ -88,6 +89,7 @@ class DeleteFirstQueueCallback(CallbackData, prefix="delete_first"):
 
 class GroupSelectCallback(CallbackData, prefix="selectGroup"):
     groupID: int
+    is_admin: bool
 
 
 class QueueIDCallback(CallbackData, prefix="queueID"):
@@ -371,21 +373,21 @@ async def swap(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.in_(['print_deadline']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
     await call.answer("Заглушка")
+    await api.get_user_groups(call.from_user.id)
 
 
 @dp.callback_query(F.data.in_(['add_deadline']))
 async def add_deadline(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
-        groups = await api.check_admin(call.message.chat.id)
+        groups = await api.get_user_groups(call.message.chat.id)
         if len(groups) == 0:
-            await call.answer("Так как у вас нет групп, где вы являетесь администратором")
-            # Заглушка
+            await call.answer("Вы не состоите ни в одной группе, лох")
         else:
             builder = InlineKeyboardBuilder()
             await state.update_data(event_type=EventType.DEADLINE)
-            for group in groups:
+            for group, is_admin in groups:
                 builder.button(text=group.name,
-                               callback_data=GroupSelectCallback(groupID=group.tg_id))
+                               callback_data=GroupSelectCallback(groupID=group.tg_id, is_admin=is_admin))
             builder.adjust(1)
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()
@@ -414,6 +416,7 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
 async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback, state: FSMContext):
     await state.update_data(group_id=callback_data.groupID)
+    await state.update_data(deadline_roots=callback_data.is_admin)
     await call.message.answer("Напишите сообщение для добавления")
     await state.set_state(States.text)
     await call.answer()
@@ -435,7 +438,7 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
             await state.update_data(event_type=EventType.QUEUE)
             for group in groups:
                 builder.button(text=group.name,
-                               callback_data=GroupSelectCallback(groupID=group.tg_id))
+                               callback_data=GroupSelectCallback(groupID=group.tg_id, is_admin = True))
             builder.adjust(1)
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()
@@ -671,9 +674,9 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         data["creator_id"] = message.chat.id
     except Exception:
         print("Error")
-    thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
     builder = InlineKeyboardBuilder()
     if data["event_type"] == EventType.QUEUE:
+        thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
         builder.button(text="Создать очередь", callback_data="add_queue")
         builder.button(text="Вывести существующие очереди", callback_data="print_queue")
         builder.button(text="Запросить перемещение в очереди", callback_data="swap")
@@ -683,19 +686,26 @@ async def putInDb(message: Message, state: FSMContext) -> None:
                                      text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
                                           (" За {} до этого будет отправлено напоминание".format(notif_date)
                                            if notif_date != "" else ""))
+        await api.update_message_id(queue_id, mes.message_id, data['group_id'])
+        await api.create_queue_tasks(queue_id, data["group_id"])
     else:
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.adjust(1)
-        await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
-        mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                     text="Ваша смертная линия {} наступит через {}.".format(data['text'], date,
-                                                                                             notif_date) +
-                                          (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
-                                              notif_date)
-                                           if notif_date != "" else ""))
-    await api.update_message_id(queue_id, mes.message_id, data['group_id'])
-    await api.create_queue_tasks(queue_id, data["group_id"])
+        if data["deadline_roots"]:
+            thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
+            await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
+            mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
+                                         text="Ваша смертная линия {} наступит через {}.".format(data['text'], date,
+                                                                                                 notif_date) +
+                                              (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
+                                                  notif_date)
+                                               if notif_date != "" else ""))
+            await api.update_message_id(queue_id, mes.message_id, data['group_id'])
+            await api.create_queue_tasks(queue_id, data["group_id"])
+        else:
+            await message.answer("Так как вы не являетесь админом этой группе, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
+            await api.get_group_admin(data['group_id'])
 
 
 @dp.callback_query(F.data.in_(['custom']))
@@ -970,6 +980,12 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
 async def bot_add_to_group(message: types.Message):
     if (await bot.get_me()).id == message.new_chat_member['id']:
         await cmd_startgroup(message)
+    elif not message.new_chat_member['is_bot']:
+        full_name = message.new_chat_member['first_name'] + (" " + message.new_chat_member['last_name'] if 'last_name' in message.new_chat_member else '')
+        await api.add_user_to_group(message.chat.id, message.new_chat_member['id'], full_name,
+                                            False, message.chat.title, message.message_thread_id)
+    else:
+        print(message)
 
 
 @dp.message(F.left_chat_participant)
