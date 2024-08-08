@@ -33,6 +33,7 @@ async def create_queue_or_deadline(data_dict):
     creator = await TelegramUser.objects.aget(pk=creator_id)
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
+    is_queue = data_dict["event_type"] == EventType.QUEUE
     if 'sec' in data_dict:
         date = datetime.strptime(
             f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
@@ -41,7 +42,6 @@ async def create_queue_or_deadline(data_dict):
         date = datetime.strptime(f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
                                   "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    is_queue = data_dict["event_type"] == EventType.QUEUE
     if is_queue:
         queue = await Queue.objects.acreate(text=message, date=date, creator=creator, group=group)
         event_id = queue.pk

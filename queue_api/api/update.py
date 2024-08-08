@@ -34,7 +34,7 @@ async def change_tz(user_id: int, tz: str):
     return {'status': 'OK', 'message': 'Справился с вводом одной цифры'}
 
 
-async def update_done_status(deadline_status_id: int, is_done: bool):
+async def update_done_status(deadline_status_id: int):
     deadline_status = await DeadlineStatus.objects.aget(pk=deadline_status_id)
-    deadline_status.is_done = is_done
+    deadline_status.is_done = not F('is_done')
     await deadline_status.asave()

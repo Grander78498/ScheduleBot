@@ -1,5 +1,5 @@
 from .imports import *
-from .utils import print_date_diff
+from .utils import print_date_diff, OFFSET
 
 
 async def get_deadline_info(deadline_id: int):
@@ -39,8 +39,14 @@ async def delete_deadline_request(user_id: int, group_id: int):
     await deadline_request.adelete()
 
 
-async def get_deadlines(user_id: int):
+async def get_deadlines(user_id: int, offset: int):
     deadline_statuses = [deadline async for deadline in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
+    len_deadlines = len(deadline_statuses)
+    deadline_statuses = deadline_statuses[offset:offset + OFFSET]
+    if offset + OFFSET <= len_deadlines:
+        has_next = False
+    else:
+        has_next = True
     deadline_list = []
     for deadline_status in deadline_statuses:
         deadline_list.append((deadline_status.pk, deadline_status.is_done))
@@ -53,11 +59,11 @@ async def get_deadlines(user_id: int):
         res += str(index) + '. '
         res += deadline.text + '\n'
         group = await TelegramGroup.objects.aget(pk=deadline.group_id)
-        res += 'Название группы: ' + group.name + '\n'
+        res += 'Название группы: ' + (group.name if len(group.name) <= 32 else group.name[:29] + '...') + '\n'
         res += f'Статус: {":check_mark_button:" if deadline_status.is_done else ":red_exclamation_mark:"}\n'
         my_date = print_date_diff(timezone.now(), deadline.date)
         res += 'Дедлайн произойдёт через ' + my_date + '\n'
-    return {'status': "OK", 'message': res, 'deadline_list': deadline_list}
+    return {'status': "OK", 'message': res, 'deadline_list': deadline_list, "has_next": has_next}
 
 
 async def delete_deadline_status(deadline_status_id: int):
