@@ -60,8 +60,8 @@ async def get_deadlines(user_id: int):
     return {'status': "OK", 'message': res, 'deadline_list': deadline_list}
 
 
-async def delete_deadline_status(user_id: int, deadline_id: int):
-    deadline_status = await DeadlineStatus.objects.aget(user_id=user_id, deadline_id=deadline_id)
+async def delete_deadline_status(deadline_status_id: int):
+    deadline_status = await DeadlineStatus.objects.aget(pk=deadline_status_id)
     await deadline_status.adelete()
 
 
@@ -76,3 +76,8 @@ async def check_deadline_status(deadline_status_id: int):
         return True
     except Exception:
         return False
+
+
+async def get_deadline_name(deadline_status_id: int):
+    deadline_status = await DeadlineStatus.objects.select_related('deadline').aget(pk=deadline_status_id)
+    return deadline_status.deadline.text

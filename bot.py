@@ -454,8 +454,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
 @dp.callback_query(CanbanDesk.filter(F.deadline_status_id != 0))
 async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     is_done = callback_data.is_done
-#    deadline_name = await api.get_deadline_name(callback_data.deadline_status_id)
-    deadline_name = "Огузок"
+    deadline_name = await api.get_deadline_name(callback_data.deadline_status_id)
     builder = InlineKeyboardBuilder()
     mes = await call.message.answer("Вы выбрали дедлайн {}, вам доступны след. действия".format(deadline_name))
     if is_done:
@@ -467,14 +466,14 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
 
 @dp.callback_query(DeadStatus.filter(F.deadline_status_id != 0))
 async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus):
+    builder = InlineKeyboardBuilder()
     if callback_data.d_type=="delete":
-        # await api.delete_deadline_status(callback_data.deadline_status_id)
+        await api.delete_deadline_status(callback_data.deadline_status_id)
+        await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
+    else:
+        await api.update_done_status(callback_data.deadline_status_id, not callback_data.is_done)
         await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
     res = await api.get_deadlines(call.from_user.id)
-    builder = InlineKeyboardBuilder()
-    else:
-        # await api.upfate_done_status(callback_data.deadline_status_id, not callback_data.is_done)
-        await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
