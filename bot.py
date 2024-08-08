@@ -415,13 +415,14 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
         buttons = [5 for _ in range(lenq//5)]
         if lenq%5!=0:
             buttons.append(lenq%5)
+        nav_button = 0
         if has_next:
-            builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
             builder.button(text="next", callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
-            buttons.append(2)
-        elif callback_data.offset != 0:
+            nav_button += 1
+        if callback_data.offset != 0:
             builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
-            buttons.append(1)
+            nav_button += 1
+        buttons.append(nav_button)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
@@ -450,13 +451,14 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
         buttons = [5 for _ in range(lenq//5)]
         if lenq%5!=0:
             buttons.append(lenq%5)
+        nav_button = 0
         if has_next:
-            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
             builder.button(text="next", callback_data=QueuePagination(offset = callback_data.offset + api.OFFSET))
-            buttons.append(2)
+            nav_button += 1
         elif callback_data.offset != 0:
             builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
-            buttons.append(1)
+            nav_button += 1
+        buttons.append(nav_button)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
@@ -540,13 +542,14 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
         buttons = [5 for _ in range(len_d//5)]
         if len_d%5!=0:
             buttons.append(len_d%5)
+        nav_button = 0
         if has_next:
-            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
             builder.button(text="next", callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
-            buttons.append(2)
-        elif callback_data.offset!=0:
+            nav_button += 1
+        elif callback_data.offset != 0:
             builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
-            buttons.append(1)
+            nav_button += 1
+        buttons.append(nav_button)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=mes.message_id,
                                             reply_markup=builder.as_markup())
