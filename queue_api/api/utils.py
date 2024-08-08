@@ -8,7 +8,7 @@ from .imports import *
 # telethon_event_loop = asyncio.new_event_loop()
 
 
-OFFSET = 20
+OFFSET = 3
 
 
 class EventType(Enum):
