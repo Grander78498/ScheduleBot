@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     password: str = 'postgres'
     dbname: str = 'project_db'
 
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', env_prefix="project")
 
 
 config = Settings()
