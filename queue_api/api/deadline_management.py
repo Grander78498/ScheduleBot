@@ -37,3 +37,42 @@ async def create_deadline_request(user_id: int, group_id: int):
 async def delete_deadline_request(user_id: int, group_id: int):
     deadline_request = await DeadlineRequest.objects.aget(user_id=user_id, group_id=group_id)
     await deadline_request.adelete()
+
+
+async def get_deadlines(user_id: int):
+    deadline_statuses = [deadline async for deadline in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
+    deadline_list = []
+    for deadline_status in deadline_statuses:
+        deadline_list.append((deadline_status.pk, deadline_status.is_done))
+
+    if len(deadline_list) == 0:
+        return {"status": 'ERROR', "message": 'У вас нет дедов('}
+    res = 'Ваши дедлайны:\n'
+    for index, deadline_status in enumerate(deadline_statuses, 1):
+        deadline = await Deadline.objects.get(pk=deadline_status.deadline_id)
+        res += str(index) + '. '
+        res += deadline.text + '\n'
+        group = await TelegramGroup.objects.aget(pk=deadline.group_id)
+        res += 'Название группы: ' + group.name + '\n'
+        res += f'Статус: {":check_mark_button:" if deadline_status.is_done else ":red_exclamation_mark:"}\n'
+        my_date = print_date_diff(timezone.now(), deadline.date)
+        res += 'Дедлайн произойдёт через ' + my_date + '\n'
+    return {'status': "OK", 'message': res, 'deadline_list': deadline_list}
+
+
+async def delete_deadline_status(user_id: int, deadline_id: int):
+    deadline_status = await DeadlineStatus.objects.aget(user_id=user_id, deadline_id=deadline_id)
+    await deadline_status.adelete()
+
+
+async def print_deadline(deadline_id: int):
+    deadline = await Deadline.objects.get(pk=deadline_id)
+    return f"Дедлайн {deadline.text} наступил! Пути назад больше нет"
+
+
+async def check_deadline_status(deadline_status_id: int):
+    try:
+        await DeadlineStatus.objects.aget(pk=deadline_status_id)
+        return True
+    except Exception:
+        return False

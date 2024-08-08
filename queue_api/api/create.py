@@ -47,6 +47,9 @@ async def create_queue_or_deadline(data_dict):
         event_id = queue.pk
     else:
         deadline = await Deadline.objects.acreate(text=message, date=date, creator=creator, group=group)
+        members = GroupMember.objects.filter(groups_id=group_id)
+        async for member in members:
+            await DeadlineStatus.objects.acreate(user_id=member.user_id, deadline_id=deadline.pk)
         event_id = deadline.pk
     time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):

@@ -72,3 +72,9 @@ class Deadline(Event):
 class DeadlineRequest(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
+
+
+class DeadlineStatus(models.Model):
+    user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
+    deadline = models.ForeignKey('Deadline', on_delete=models.CASCADE)
+    is_done = models.BooleanField(default=False)

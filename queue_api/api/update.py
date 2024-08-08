@@ -32,3 +32,9 @@ async def change_tz(user_id: int, tz: str):
 
     await TelegramUser.objects.filter(pk=user_id).aupdate(tz=tz)
     return {'status': 'OK', 'message': 'Справился с вводом одной цифры'}
+
+
+async def update_done_status(deadline_status_id: int, is_done: bool):
+    deadline_status = await DeadlineStatus.objects.aget(pk=deadline_status_id)
+    deadline_status.is_done = is_done
+    await deadline_status.asave()
