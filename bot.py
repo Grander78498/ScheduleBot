@@ -980,6 +980,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         await api.update_message_id(queue_id, mes.message_id, data['group_id'])
         await api.create_queue_tasks(queue_id, data["group_id"])
     else:
+        print(data['text'], data['event_type'], ' FFFFFFFFFFFF')
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.adjust(1)
@@ -1236,6 +1237,7 @@ async def echo(message: Message, state: FSMContext) -> None:
 async def send_ready(event_id, thread_id, group_id):
     builder = InlineKeyboardBuilder()
     queue_message_id = await api.get_message_id(event_id, group_id)
+    print(group_id, queue_message_id, 'AAAAAAAAAAAAAAAAAAAAAA')
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
     event_type = await api.get_event_type_by_id(event_id)
     if event_type == EventType.QUEUE:
