@@ -45,7 +45,7 @@ async def print_queue(queue_id: int, private: bool, bot_name: str):
     else:
         for index, member in enumerate(members, 1):
             if index == len(members) - 1 and index > 10:
-                print('.................\n')
+                res_string += '.................\n'
             if index <= 8 or (index <= 10 and len(members) <= 10) or (index >= len(members) - 1 and index > 10):
                 user = await TelegramUser.objects.aget(pk=member.user_id)
                 res_string += (str(index) + '. ')
