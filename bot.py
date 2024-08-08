@@ -394,7 +394,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
     await call.answer()
 
 
-@dp.callback_query(QueueSwapPagination.filter(F.offset != 0))
+@dp.callback_query(QueueSwapPagination.filter(F.offset != -1))
 async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
     _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
     status = _dict["status"]
@@ -409,7 +409,7 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
         r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
-            builder.button(text="{}".format(i + 1),
+            builder.button(text="{}".format(i + callback_data.offset + 1),
                            callback_data=QueueSelectForSwapCallback(queueID=queueList[i],
                                                                     queueName=names[i]))
         buttons = [5 for _ in range(lenq//5)]
@@ -429,7 +429,7 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
 
 
 
-@dp.callback_query(QueuePagination.filter(F.offset != 0))
+@dp.callback_query(QueuePagination.filter(F.offset != -1))
 async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
     _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
     status = _dict["status"]
@@ -445,7 +445,7 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
         r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
-            builder.button(text="{}".format(i + 1),
+            builder.button(text="{}".format(i + callback_data.offset + 1),
                            callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
         buttons = [5 for _ in range(lenq//5)]
         if lenq%5!=0:
@@ -523,7 +523,7 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
 
 
 
-@dp.callback_query(DeadPagination.filter(F.offset != 0))
+@dp.callback_query(DeadPagination.filter(F.offset != -1))
 async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
     _dict = await api.get_deadlines(call.from_user.id, callback_data.offset)
     status = _dict["status"]
@@ -534,7 +534,7 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
         mes = await call.message.answer(emojize(_dict["message"]))
         len_d = 0
         for dead_id, is_done in _dict["deadline_list"]:
-            builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
+            builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
             len_d+=1
         has_next = _dict["has_next"]
         buttons = [5 for _ in range(len_d//5)]

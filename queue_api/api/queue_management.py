@@ -137,7 +137,7 @@ async def get_all_queues(user_id: int, offset: int):
         return {"status": 404, "message": 'У вас нет очередей('}
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(queue_list, 1):
-        res += str(index) + '. '
+        res += str(index + offset) + '. '
         res += queue.text + '\n'
         group = await TelegramGroup.objects.aget(pk=queue.group_id)
         user = await TelegramUser.objects.aget(pk=user_id)

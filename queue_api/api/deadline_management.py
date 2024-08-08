@@ -56,7 +56,7 @@ async def get_deadlines(user_id: int, offset: int):
     res = 'Ваши дедлайны:\n'
     for index, deadline_status in enumerate(deadline_statuses, 1):
         deadline = await Deadline.objects.aget(pk=deadline_status.deadline_id)
-        res += str(index) + '. '
+        res += str(index + offset) + '. '
         res += deadline.text + '\n'
         group = await TelegramGroup.objects.aget(pk=deadline.group_id)
         res += 'Название группы: ' + (group.name if len(group.name) <= 32 else group.name[:29] + '...') + '\n'
