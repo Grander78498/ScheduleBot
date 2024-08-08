@@ -651,9 +651,10 @@ async def Month(call: CallbackQuery, callback_data: MonthCallback, state: FSMCon
 
 @dp.callback_query(DeadLineAcceptCallback.filter(F.deadline_id != 0))
 async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCallback):
+    group_id, text, thread_id, date, notif_date = await api.get_deadline_info(callback_data.deadline_id)
+    await api.delete_deadline_request(callback_data.user_id, group_id)
     if callback_data.solution:
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос выполнен")
-        group_id, text, thread_id, date, notif_date = await api.get_deadline_info(callback_data.deadline_id)
         mes = await bot.send_message(chat_id=group_id, message_thread_id=thread_id,
                                          text="Ваша смертная линия {} наступит через {}.".format(text, date,
                                                                                                  notif_date) +
@@ -750,14 +751,18 @@ async def putInDb(message: Message, state: FSMContext) -> None:
             await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
             await api.create_queue_tasks(deadline_id, data["group_id"])
         else:
-            await message.answer("Так как вы не являетесь админом этой группе, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
-            admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
-            builder_admin = InlineKeyboardBuilder()
-            m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
-            builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
-            builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
-            await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
-                                                reply_markup=builder_admin.as_markup())
+            res = await api.create_deadline_request(message.from_user.id, data['group_id'])
+            if res['status'] == 'ERROR':
+                await message.answer(res['message'])
+            else:
+                await message.answer("Так как вы не являетесь админом этой группы, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
+                admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
+                builder_admin = InlineKeyboardBuilder()
+                m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
+                builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
+                builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
+                await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
+                                                    reply_markup=builder_admin.as_markup())
 
 
 

@@ -24,3 +24,16 @@ async def get_deadline_info(deadline_id: int):
 async def delete_deadline(deadline_id: int):
     deadline = await Deadline.objects.aget(pk=deadline_id)
     await deadline.adelete()
+
+
+async def create_deadline_request(user_id: int, group_id: int):
+    deadline_request, is_created = await DeadlineRequest.objects.aget_or_create(user_id=user_id, group_id=group_id)
+    if not is_created:
+        return {'status': 'ERROR', 'message': 'Ваш запрос послан нахуй заранее - у вас уже есть непроверенный запрос на создание дедлайна'}
+    else:
+        return {'status': 'OK'}
+
+
+async def delete_deadline_request(user_id: int, group_id: int):
+    deadline_request = await DeadlineRequest.objects.aget(user_id=user_id, group_id=group_id)
+    await deadline_request.adelete()
