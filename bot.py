@@ -406,7 +406,7 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
         st = _dict["message"]
-        r = await call.message.answer(st)
+        r = await call.message.answer(st, parse_mode="MarkdownV2")
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + callback_data.offset + 1),
@@ -417,10 +417,10 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
             buttons.append(lenq%5)
         nav_button = 0
         if callback_data.offset != 0:
-            builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text=emojize(":left_arrow:"), callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
             nav_button += 1
         if has_next:
-            builder.button(text="next", callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
@@ -443,7 +443,7 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
         names = [queue["name"] for queue in _dict["data"]]
         is_creators = [queue["is_creator"] for queue in _dict["data"]]
         st = _dict["message"]
-        r = await call.message.answer(st)
+        r = await call.message.answer(st, parse_mode="MarkdownV2")
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + callback_data.offset + 1),
@@ -453,10 +453,10 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
             buttons.append(lenq%5)
         nav_button = 0
         if callback_data.offset != 0:
-            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text=emojize(":left_arrow:"), callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
             nav_button += 1
         if has_next:
-            builder.button(text="next", callback_data=QueuePagination(offset = callback_data.offset + api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=QueuePagination(offset = callback_data.offset + api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
@@ -479,7 +479,7 @@ async def swap(call: CallbackQuery, state: FSMContext):
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
         st = _dict["message"]
-        r = await call.message.answer(st)
+        r = await call.message.answer(st, parse_mode="MarkdownV2")
         builder = InlineKeyboardBuilder()
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
@@ -489,7 +489,7 @@ async def swap(call: CallbackQuery, state: FSMContext):
         if lenq%5!=0:
             buttons.append(lenq%5)
         if has_next:
-            builder.button(text="next", callback_data=QueueSwapPagination(offset = api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=QueueSwapPagination(offset = api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
@@ -517,7 +517,7 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
         if len_d%5!=0:
             buttons.append(len_d%5)
         if has_next:
-            builder.button(text="next", callback_data=DeadPagination(offset = api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=DeadPagination(offset = api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
@@ -544,10 +544,10 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
             buttons.append(len_d%5)
         nav_button = 0
         if callback_data.offset != 0:
-            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text=emojize(":left_arrow:"), callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
             nav_button += 1
         if has_next:
-            builder.button(text="next", callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
@@ -600,7 +600,7 @@ async def update_deadline_info(res, user_id, message_id):
         if len_d % 5 != 0:
             buttons.append(len_d % 5)
         if has_next:
-            builder.button(text="next", callback_data=DeadPagination(offset=api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=DeadPagination(offset=api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
         try:
@@ -720,7 +720,7 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
         if lenq%5!=0:
             buttons.append(lenq%5)
         if has_next:
-            builder.button(text="next", callback_data=QueuePagination(offset = api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=QueuePagination(offset = api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
@@ -755,7 +755,7 @@ async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueL
         if lenq%5!=0:
             buttons.append(lenq%5)
         if has_next:
-            builder.button(text="next", callback_data=QueuePagination(offset = api.OFFSET))
+            builder.button(text=emojize(":right_arrow:"), callback_data=QueuePagination(offset = api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
