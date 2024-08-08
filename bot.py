@@ -170,7 +170,15 @@ class DeadStatus(CallbackData, prefix="ds"):
     d_type: str
     del_mes: int
 
+class QueueSwapPagination(CallbackData, prefix="qsp"):
+    offset: int
 
+class QueuePagination(CallbackData, prefix="qp"):
+    offset: int
+
+
+class DeadPagination(CallbackData, prefix="dp"):
+    offset: int
 
 
 @dp.message(Command("queue"))
@@ -386,14 +394,15 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
     await call.answer()
 
 
-@dp.callback_query(F.data.in_(['swap']))
-async def swap(call: CallbackQuery, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id)
+@dp.callback_query(QueueSwapPagination.filter(F.offset != 0))
+async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
+    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
     else:
         lenq = len(_dict["data"])
+        has_next = _dict["has_next"]
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
         st = _dict["message"]
@@ -403,7 +412,83 @@ async def swap(call: CallbackQuery, state: FSMContext):
             builder.button(text="{}".format(i + 1),
                            callback_data=QueueSelectForSwapCallback(queueID=queueList[i],
                                                                     queueName=names[i]))
-        builder.adjust(4)
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text="next", callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
+            buttons.append(2)
+        elif callback_data.offset != 0:
+            builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+                                            reply_markup=builder.as_markup())
+    await call.answer()
+
+
+
+@dp.callback_query(QueuePagination.filter(F.offset != 0))
+async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
+    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        lenq = len(_dict["data"])
+        has_next = _dict["has_next"]
+        queueList = [queue["id"] for queue in _dict["data"]]
+        names = [queue["name"] for queue in _dict["data"]]
+        st = _dict["message"]
+        r = await call.message.answer(st)
+        builder = InlineKeyboardBuilder()
+        for i in range(lenq):
+            builder.button(text="{}".format(i + 1),
+                           callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text="next", callback_data=QueuePagination(offset = callback_data.offset + api.OFFSET))
+            buttons.append(2)
+        elif callback_data.offset != 0:
+            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+                                            reply_markup=builder.as_markup())
+    await call.answer()
+
+
+
+
+@dp.callback_query(F.data.in_(['swap']))
+async def swap(call: CallbackQuery, state: FSMContext):
+    _dict = await api.get_all_queues(call.from_user.id, 0)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        lenq = len(_dict["data"])
+        has_next = _dict["has_next"]
+        queueList = [queue["id"] for queue in _dict["data"]]
+        names = [queue["name"] for queue in _dict["data"]]
+        st = _dict["message"]
+        r = await call.message.answer(st)
+        builder = InlineKeyboardBuilder()
+        for i in range(lenq):
+            builder.button(text="{}".format(i + 1),
+                           callback_data=QueueSelectForSwapCallback(queueID=queueList[i],
+                                                                    queueName=names[i]))
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="next", callback_data=QueueSwapPagination(offset = api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
@@ -411,7 +496,7 @@ async def swap(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print_deadline']))
 async def printDeadline(call: CallbackQuery, state: FSMContext):
-    res = await api.get_deadlines(call.from_user.id)
+    res = await api.get_deadlines(call.from_user.id, 0)
     builder = InlineKeyboardBuilder()
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
@@ -424,13 +509,49 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
         for dead_id, is_done in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
             len_d+=1
-        builder.adjust(5)
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="next", callback_data=DeadPagination(offset = api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
     await call.answer()
 
 
 
-        
+@dp.callback_query(DeadPagination.filter(F.offset != 0))
+async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
+    _dict = await api.get_deadlines(call.from_user.id, callback_data.offset)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        mes = await call.message.answer(emojize(res["message"]))
+        len_d = 0
+        for dead_id, is_done in res["deadline_list"]:
+            builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
+            len_d+=1
+        has_next = _dict["has_next"]
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
+            builder.button(text="next", callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
+            buttons.append(2)
+        elif callback_data.offset!=0:
+            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+                                            reply_markup=builder.as_markup())
+    await call.answer()
+
+
+
+
 
 
 @dp.callback_query(F.data.in_(['add_deadline']))
@@ -566,13 +687,14 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id)
+    _dict = await api.get_all_queues(call.from_user.id, 0)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
     else:
         lenq = len(_dict["data"])
         queueList = [queue["id"] for queue in _dict["data"]]
+        has_next = _dict["has_next"]
         names = [queue["name"] for queue in _dict["data"]]
         is_creators = [queue["is_creator"] for queue in _dict["data"]]
         st = _dict["message"]
@@ -581,7 +703,13 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
                            callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
-        builder.adjust(4)
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="next", callback_data=QueuePagination(offset = api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
@@ -589,7 +717,7 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
 async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id)
+    _dict = await api.get_all_queues(call.from_user.id, 0)
     status = _dict["status"]
     r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id,
                                     message_id=callback_data.messageID, parse_mode='MarkdownV2')
@@ -601,6 +729,7 @@ async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueL
     else:
         await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
         lenq = len(_dict["data"])
+        has_next = _dict["has_next"]
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
         is_creators = [queue["is_creator"] for queue in _dict["data"]]
@@ -609,7 +738,13 @@ async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueL
         for i in range(lenq):
             builder.button(text="{}".format(i + 1),
                            callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
-        builder.adjust(4)
+        buttons = [5 for _ in range(lenq//5)]
+        if lenq%5!=0:
+            buttons.append(lenq%5)
+        if has_next:
+            builder.button(text="next", callback_data=QueuePagination(offset = api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
