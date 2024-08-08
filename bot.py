@@ -20,6 +20,8 @@ from aiogram.filters.callback_data import CallbackData
 from config import config
 from queue_api.api import EventType
 
+from emoji import emojize
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 bot = Bot(token=config.bot_token.get_secret_value())
@@ -155,6 +157,18 @@ class DeadLineAcceptCallback(CallbackData, prefix="da"):
     user_id: int
     message_id: int
     solution: bool
+
+class CanbanDesk(CallbackData, prefix="cd"):
+    deadline_status_id: int
+    is_done: bool
+    message_id: int
+
+class DeadStatus(CallbackData, prefix="ds"):
+    deadline_status_id: int
+    is_done: bool
+    message_id: int
+    d_type: str
+
 
 
 
@@ -395,9 +409,27 @@ async def swap(call: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query(F.data.in_(['print_deadline']))
-async def printQueue(call: CallbackQuery, state: FSMContext):
-    await call.answer("Заглушка")
-#    await api.get_user_groups(call.from_user.id)
+async def printDeadline(call: CallbackQuery, state: FSMContext):
+    res = await api.get_deadlines(call.from_user.id)
+    builder = InlineKeyboardBuilder()
+    if res["status"]!="OK":
+        builder.button(text="Создать напоминание", callback_data="add_deadline")
+        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+        builder.adjust(1)
+        await call.message.answer(res["message"], reply_markup=builder.as_markup())
+    else:
+        mes = await call.message.answer(emojize(res["message"]))
+        len_d = 0
+        for dead_id, is_done in res["deadline_list"]:
+            builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
+            len_d+=1
+        builder.adjust(5)
+        await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
+    await call.answer()
+
+
+
+        
 
 
 @dp.callback_query(F.data.in_(['add_deadline']))
@@ -416,6 +448,22 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
             await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
     await call.answer()
 
+
+
+@dp.callback_query(CanbanDesk.filter(F.deadline_status_id != 0))
+async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
+    is_done = callback_data.is_done
+#    deadline_name = await api.get_deadline_name(callback_data.deadline_status_id)
+    deadline_name = "Огузок"
+    builder = InlineKeyboardBuilder()
+    if is_done:
+        builder.button(text="Удалить дедлайн".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="delete"))
+        builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change"))
+    else:
+        builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change"))
+    await call.message.answer("Вы выбрали дедлайн {}, вам доступны след. действия".format(deadline_name), reply_markup=builder.as_markup())
+
+    
 
 @dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
