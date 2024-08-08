@@ -396,7 +396,7 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
 
 @dp.callback_query(QueueSwapPagination.filter(F.offset != -1))
 async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
-    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
+    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset, True)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
@@ -432,7 +432,7 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
 
 @dp.callback_query(QueuePagination.filter(F.offset != -1))
 async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
-    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset)
+    _dict = await api.get_all_queues(call.from_user.id, callback_data.offset, False)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
@@ -469,7 +469,7 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
 
 @dp.callback_query(F.data.in_(['swap']))
 async def swap(call: CallbackQuery, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id, 0)
+    _dict = await api.get_all_queues(call.from_user.id, 0, True)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
@@ -700,7 +700,7 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(F.data.in_(['print_queue']))
 async def printQueue(call: CallbackQuery, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id, 0)
+    _dict = await api.get_all_queues(call.from_user.id, 0, False)
     status = _dict["status"]
     if status!="OK":
         await call.message.answer(_dict["message"])
@@ -730,7 +730,7 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 
 @dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
 async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id, 0)
+    _dict = await api.get_all_queues(call.from_user.id, 0, False)
     status = _dict["status"]
     r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id,
                                     message_id=callback_data.messageID, parse_mode='MarkdownV2')

@@ -122,11 +122,12 @@ async def rename_queue(queue_id: int, message: str):
     await send_render_task(queue_id, False)
 
 
-async def get_all_queues(user_id: int, offset: int):
+async def get_all_queues(user_id: int, offset: int, for_swap: bool):
     user = await TelegramUser.objects.aget(pk=user_id)
     queue_list = [queue async for queue in user.user_queue.all().order_by('date')]
-    creator_list = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
-    queue_list = list(set(queue_list).union(set(creator_list)))
+    if not for_swap:
+        creator_list = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
+        queue_list = list(set(queue_list).union(set(creator_list)))
     len_queues = len(queue_list)
     queue_list = queue_list[offset:offset + OFFSET]
     if len(queue_list) < OFFSET or len(queue_list) == len_queues:
