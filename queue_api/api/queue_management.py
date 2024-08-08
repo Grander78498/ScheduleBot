@@ -129,7 +129,7 @@ async def get_all_queues(user_id: int, offset: int):
     queue_list = list(set(queue_list).union(set(creator_list)))
     len_queues = len(queue_list)
     queue_list = queue_list[offset:offset + OFFSET]
-    if offset + OFFSET <= len_queues:
+    if len(queue_list) <= len_queues:
         has_next = False
     else:
         has_next = True
