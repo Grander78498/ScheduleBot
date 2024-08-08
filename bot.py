@@ -480,10 +480,10 @@ async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus)
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.adjust(1)
-        await bot.edit_message_text(chat_id=call.from_user.id,text=res["message"], message_id=callback_data.message_id)
+        await bot.edit_message_text(chat_id=call.from_user.id,text=emojize(res["message"]), message_id=callback_data.message_id)
         await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=callback_data.message_id, reply_markup=builder.as_markup())
     else:
-        await bot.edit_message_text(chat_id=call.from_user.id,text=res["message"], message_id=callback_data.message_id)
+        await bot.edit_message_text(chat_id=call.from_user.id,text=emojize(res["message"]), message_id=callback_data.message_id)
         len_d = 0
         for dead_id, is_done in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=callback_data.message_id))
