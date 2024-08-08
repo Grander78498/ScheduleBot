@@ -463,6 +463,7 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     else:
         builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change", del_mes = mes.message_id))
     await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
+    await call.answer()
 
 
 @dp.callback_query(DeadStatus.filter(F.deadline_status_id != 0))
