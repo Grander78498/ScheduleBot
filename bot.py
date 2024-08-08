@@ -17,12 +17,12 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
-from config import API_TOKEN
+from config import config
 from queue_api.api import EventType
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=config.bot_token.get_secret_value())
 
 
 async def get_bot_name():

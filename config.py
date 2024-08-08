@@ -1,11 +1,18 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
-load_dotenv()
 
-HOST = '127.0.0.1'
-PORT = '5432'
-USER = 'postgres'
-PASSWORD = 'postgres'
-DBNAME = 'project_db'
-API_TOKEN = os.getenv("BOT_TOKEN")
+class Settings(BaseSettings):
+    bot_token: SecretStr
+    api_id: int
+    api_hash: SecretStr
+    host: str = '127.0.0.1'
+    port: str = '5432'
+    user: str = 'postgres'
+    password: str = 'postgres'
+    dbname: str = 'project_db'
+
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+
+
+config = Settings()

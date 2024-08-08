@@ -6,6 +6,7 @@ from telethon import TelegramClient
 import bot
 import asyncio
 from .models import *
+from config import config
 
 celery_event_loop = asyncio.new_event_loop()
 
@@ -58,9 +59,9 @@ async def get_users(client: TelegramClient, group_id, bot_id):
 
 @shared_task(name="get_users")
 def task_get_users(group_id: int, bot_id):
-    api_id = 26588665
-    api_hash = "f9662262f669c9c65d5c8d550db647cc"
-    bot_token = "6733084480:AAECacPclPo0emdVottudh9o9yoSqJP7BGs"
+    api_id = config.api_id
+    api_hash = config.api_hash.get_secret_value()
+    bot_token = config.bot_token.get_secret_value()
 
     client_bot = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
     with client_bot:
