@@ -3,7 +3,6 @@ ENV_DIR = $(DIR)/.venv/bin
 PYTHON_EXEC = $(ENV_DIR)/python3
 
 reqs: requirements.txt
-	git pull
 	$(ENV_DIR)/pip3 install -r requirements.txt
 
 migrate: reqs queue_api/models.py

@@ -416,11 +416,11 @@ async def swap_pagin(call: CallbackQuery, callback_data: QueueSwapPagination):
         if lenq%5!=0:
             buttons.append(lenq%5)
         nav_button = 0
-        if has_next:
-            builder.button(text="next", callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
-            nav_button += 1
         if callback_data.offset != 0:
             builder.button(text="back", callback_data=QueueSwapPagination(offset = callback_data.offset - api.OFFSET))
+            nav_button += 1
+        if has_next:
+            builder.button(text="next", callback_data=QueueSwapPagination(offset = callback_data.offset + api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
@@ -452,11 +452,11 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
         if lenq%5!=0:
             buttons.append(lenq%5)
         nav_button = 0
+        if callback_data.offset != 0:
+            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
+            nav_button += 1
         if has_next:
             builder.button(text="next", callback_data=QueuePagination(offset = callback_data.offset + api.OFFSET))
-            nav_button += 1
-        elif callback_data.offset != 0:
-            builder.button(text="back", callback_data=QueuePagination(offset = callback_data.offset - api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
@@ -543,11 +543,11 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
         if len_d%5!=0:
             buttons.append(len_d%5)
         nav_button = 0
+        if callback_data.offset != 0:
+            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
+            nav_button += 1
         if has_next:
             builder.button(text="next", callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
-            nav_button += 1
-        elif callback_data.offset != 0:
-            builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
             nav_button += 1
         buttons.append(nav_button)
         builder.adjust(*buttons)
