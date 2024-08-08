@@ -440,6 +440,7 @@ async def queue_pagin(call: CallbackQuery, callback_data: QueuePagination):
         has_next = _dict["has_next"]
         queueList = [queue["id"] for queue in _dict["data"]]
         names = [queue["name"] for queue in _dict["data"]]
+        is_creators = [queue["is_creator"] for queue in _dict["data"]]
         st = _dict["message"]
         r = await call.message.answer(st)
         builder = InlineKeyboardBuilder()
@@ -504,14 +505,15 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
         builder.adjust(1)
         await call.message.answer(res["message"], reply_markup=builder.as_markup())
     else:
+        has_next = res['has_next']
         mes = await call.message.answer(emojize(res["message"]))
         len_d = 0
         for dead_id, is_done in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
             len_d+=1
-        buttons = [5 for _ in range(lenq//5)]
-        if lenq%5!=0:
-            buttons.append(lenq%5)
+        buttons = [5 for _ in range(len_d//5)]
+        if len_d%5!=0:
+            buttons.append(len_d%5)
         if has_next:
             builder.button(text="next", callback_data=DeadPagination(offset = api.OFFSET))
             buttons.append(1)
@@ -528,15 +530,16 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
     if status!="OK":
         await call.message.answer(_dict["message"])
     else:
-        mes = await call.message.answer(emojize(res["message"]))
+        builder = InlineKeyboardBuilder()
+        mes = await call.message.answer(emojize(_dict["message"]))
         len_d = 0
-        for dead_id, is_done in res["deadline_list"]:
+        for dead_id, is_done in _dict["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=mes.message_id))
             len_d+=1
         has_next = _dict["has_next"]
-        buttons = [5 for _ in range(lenq//5)]
-        if lenq%5!=0:
-            buttons.append(lenq%5)
+        buttons = [5 for _ in range(len_d//5)]
+        if len_d%5!=0:
+            buttons.append(len_d%5)
         if has_next:
             builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
             builder.button(text="next", callback_data=DeadPagination(offset = callback_data.offset + api.OFFSET))
@@ -545,7 +548,7 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
             builder.button(text="back", callback_data=DeadPagination(offset = callback_data.offset - api.OFFSET))
             buttons.append(1)
         builder.adjust(*buttons)
-        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=mes.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
 
@@ -584,12 +587,19 @@ async def update_deadline_info(res, user_id, message_id):
         await bot.edit_message_text(chat_id=user_id, text=emojize(res["message"]), message_id=message_id)
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=message_id, reply_markup=builder.as_markup())
     else:
+        has_next = res['has_next']
         await bot.edit_message_text(chat_id=user_id,text=emojize(res["message"]), message_id=message_id)
         len_d = 0
         for dead_id, is_done in res["deadline_list"]:
             builder.button(text=("{}".format(len_d + 1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=message_id))
             len_d += 1
-        builder.adjust(5)
+        buttons = [5 for _ in range(len_d // 5)]
+        if len_d % 5 != 0:
+            buttons.append(len_d % 5)
+        if has_next:
+            builder.button(text="next", callback_data=DeadPagination(offset=api.OFFSET))
+            buttons.append(1)
+        builder.adjust(*buttons)
         try:
             await bot.edit_message_reply_markup(chat_id=user_id, message_id=message_id, reply_markup=builder.as_markup())
         except Exception as e:
@@ -601,7 +611,7 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     check = await api.check_deadline_status(callback_data.deadline_status_id)
     if not check:
         await call.answer("О нет, дедлайн был магическим образом удалён, как же так")
-        res = await api.get_deadlines(call.from_user.id)
+        res = await api.get_deadlines(call.from_user.id, 0)
         await update_deadline_info(res, call.from_user.id, callback_data.message_id)
     else:
         deadline_name = await api.get_deadline_name(callback_data.deadline_status_id)
@@ -624,7 +634,7 @@ async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus)
     else:
         await api.update_done_status(callback_data.deadline_status_id)
         await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
-    res = await api.get_deadlines(call.from_user.id)
+    res = await api.get_deadlines(call.from_user.id, 0)
     await update_deadline_info(res, call.from_user.id, callback_data.message_id)
     await call.answer()        
 
