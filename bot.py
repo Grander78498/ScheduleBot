@@ -462,6 +462,7 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
         builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change", del_mes = mes.message_id))
     else:
         builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change", del_mes = mes.message_id))
+    await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
 
 
 @dp.callback_query(DeadStatus.filter(F.deadline_status_id != 0))
@@ -857,6 +858,7 @@ async def custom_time(call: CallbackQuery, state: FSMContext):
     builder.adjust(1)
     await call.message.answer("Выберите год", reply_markup=builder.as_markup())
     await state.set_state(States.year)
+    await call.answer()
 
 
 @dp.callback_query(F.data.in_(['now']))
