@@ -1354,6 +1354,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
                 await asyncio.sleep(10)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
             else:
                 a = await message.answer(res['message'])
