@@ -5,6 +5,6 @@ import json
 import asyncio
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from django.conf import settings
-from django.db.models import F
+from django.db.models import F, Q
 import re
 from enum import Enum
