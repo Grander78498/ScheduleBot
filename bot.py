@@ -1353,8 +1353,8 @@ async def echo(message: Message, state: FSMContext) -> None:
             if res['status'] == 'OK':
                 data = await state.get_data()
                 q = await message.answer("Название было изменено")
-                await api.update_deadline_text(data['renameDeadline']["dead_id"], message.text)
-                message_id, text, chat_id = await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
+                message_id, text, chat_id = await api.update_deadline_text(data['renameDeadline']["dead_id"], message.text)
+                await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
                 await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
                 await asyncio.sleep(10)
