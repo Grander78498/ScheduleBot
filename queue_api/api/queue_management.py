@@ -91,6 +91,10 @@ async def delete_queue(queue_id: int):
     queue = await Queue.objects.aget(pk=queue_id)
     chat_list, message_list = ([message.chat_id async for message in queue.message_set.all()],
                                [message.message_id async for message in queue.message_set.all()])
+    tasks = PeriodicTask.objects.filter(name__in=[f"{queue.text} {queue.pk} {queue.name}",
+                                                  f"Ready {queue.text} {queue.pk} {queue.name}"])
+    async for task in tasks:
+        await task.adelete()
     await queue.adelete()
     return chat_list, message_list
 

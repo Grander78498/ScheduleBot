@@ -39,3 +39,9 @@ async def update_done_status(deadline_status_id: int):
     status = deadline_status.is_done
     deadline_status.is_done = not status
     await deadline_status.asave()
+
+
+async def update_deadline_text(deadline_id: int, deadline_text: str):
+    deadline = await Deadline.objects.aget(pk=deadline_id)
+    deadline.text = deadline_text
+    await deadline.asave()
