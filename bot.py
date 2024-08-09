@@ -71,6 +71,9 @@ class States(StatesGroup):
     event_message_id = State()
 
 
+class Deadline(StatesGroup):
+    renameDeadline = State()
+
 class ReturnToQueueList(CallbackData, prefix="return"):
     messageID: int
 
@@ -532,6 +535,7 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+        builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
         builder.adjust(1)
         await call.message.answer(res["message"], reply_markup=builder.as_markup())
     else:
@@ -560,6 +564,7 @@ async def editDeadline(call: CallbackQuery):
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+        builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
         builder.adjust(1)
         await call.message.answer(res["message"], reply_markup=builder.as_markup())
     else:
@@ -593,6 +598,46 @@ async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
     await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                         reply_markup=builder.as_markup())
 
+
+
+@dp.callback_query(RenameDeadlineCallback.filter(F.deadline_id != 0))
+async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCallback, state: FSMContext):
+    mes = await call.message.answer("Напиши новое название")
+    await state.update_data(renameDeadline={"message_id":mes.message_id, "dead_id":callback_data.deadline_id, "edit_message_id":call.message.message_id})
+
+
+async def deadline_list_return(user_id, messageID, message: types.Message):
+    res = await api.get_deadlines(user_id, 0, True)
+    builder = InlineKeyboardBuilder()
+    if res["status"]!="OK":
+        builder.button(text="Создать напоминание", callback_data="add_deadline")
+        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+        builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
+        builder.adjust(1)
+        r = await bot.edit_message_text(text=res["message"], chat_id=user_id,
+                                        message_id=messageID)
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID, reply_markup=builder.as_markup())
+    else:
+        has_next = res['has_next']
+        mes = await message.answer(res["message"])
+        len_d = 0
+        for dead_id, _ in res["deadline_list"]:
+            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=mes.message_id))
+            len_d+=1
+        buttons = [5 for _ in range(len_d//5)]
+        if len_d%5!=0:
+            buttons.append(len_d%5)
+        if has_next:
+            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = api.OFFSET, message_id=mes.message_id))
+            buttons.append(1)
+        builder.adjust(*buttons)
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=mes.message_id, reply_markup=builder.as_markup())
+
+
+@dp.callback_query(ReturnToDeadlineList.filter(F.messageID != 0))
+async def return_deadline_list(call: CallbackQuery, callback_data: ReturnToDeadlineList):
+    await deadline_list_return(call.from_user.id, callback_data.messageID, call.message)
+    await call.answer()
 
 
 @dp.callback_query(DeadPagination.filter(F.offset != -1))
@@ -1299,6 +1344,21 @@ async def echo(message: Message, state: FSMContext) -> None:
             if res["status"] == "OK":
                 await state.clear()
             await message.answer(res["message"])
+        elif st == Deadline.renameDeadline:
+            res = api.check_text(message.text, 47)
+            if res['status'] == 'OK':
+                data = await state.get_data()
+                q = await message.answer("Название было изменено")
+                asyncio.sleep(10)
+                await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
+                await api.update_deadline_text(data["dead_id"], message.text)
+                await bot.delete_message(chat_id=message.chat.id, message_id=data["message_id"].message_id)
+                await deadline_list_return(message.chat.id, data["edit_message_id"], message)
+            else:
+                a = await message.answer(res['message'])
+                await asyncio.sleep(10)
+                await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == States.renameQueue:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
