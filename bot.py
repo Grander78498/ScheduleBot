@@ -68,6 +68,7 @@ class States(StatesGroup):
     event_type = State()
     deadline_roots = State()
     set_main_admin = State()
+    event_message_id = State()
 
 
 class ReturnToQueueList(CallbackData, prefix="return"):
@@ -577,7 +578,8 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
                     builder.button(text=group.name,
                                    callback_data=GroupSelectCallback(groupID=group.tg_id, is_admin=is_admin))
                 builder.adjust(1)
-                await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+                mes = await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+                await state.update_data(event_message_id=mes.message_id)
             await call.answer()
 
 
@@ -665,6 +667,8 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
 
 @dp.callback_query(GroupSelectCallback.filter(F.groupID != 0))
 async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback, state: FSMContext):
+    data = await state.get_data()
+    await bot.delete_message(chat_id=call.from_user.id, message_id=data['event_message_id'])
     await state.update_data(group_id=callback_data.groupID)
     await state.update_data(deadline_roots=callback_data.is_admin)
     await call.message.answer("Напишите сообщение для добавления")
@@ -694,7 +698,8 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
                     builder.button(text=group.name,
                                    callback_data=GroupSelectCallback(groupID=group.tg_id, is_admin = True))
                 builder.adjust(1)
-                await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+                mes = await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+                await state.update_data(event_message_id=mes.message_id)
             await call.answer()
 
 
