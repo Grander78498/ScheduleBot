@@ -170,6 +170,11 @@ class DeadStatus(CallbackData, prefix="ds"):
     d_type: str
     del_mes: int
 
+
+class EditDeadline(CallbackData, prefix="ed"):
+    deadline_id: int
+
+
 class QueueSwapPagination(CallbackData, prefix="qsp"):
     offset: int
     message_id: int
@@ -182,6 +187,27 @@ class QueuePagination(CallbackData, prefix="qp"):
 class DeadPagination(CallbackData, prefix="dp"):
     offset: int
     message_id: int
+
+
+class EditDeadPagination(CallbackData, prefix="edp"):
+    offset: int
+    message_id: int
+
+
+class RenameDeadlineCallback(CallbackData, prefix="rdc"):
+    deadline_id: int
+
+
+class DeleteDeadlineCallback(CallbackData, prefix="ddc"):
+    deadline_id: int
+
+
+class ReTimeDeadlineCallback(CallbackData, prefix="rtd"):
+    deadline_id: int
+
+
+class ReturnToDeadkineList(CallbackData, prefix="rtl"):
+    messageID: int
 
 
 @dp.message(Command("queue"))
@@ -216,6 +242,7 @@ async def print_info_deadline(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="Создать напоминание", callback_data="add_deadline")
     builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+    builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
     builder.adjust(1)
     await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
 
@@ -282,7 +309,7 @@ async def cmd_start(message: types.Message) -> None:
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer(
-                "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \n Создание и управление очередями /queue \n СОздание и управление дедлайнами /deadline",
+                "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \nУправление очередями /queue \nУправление дедлайнами /deadline",
                 reply_markup=builder_add.as_markup())
     elif message.chat.type == "supergroup":
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
@@ -528,6 +555,53 @@ async def printDeadline(call: CallbackQuery, state: FSMContext):
 
 
 
+@dp.callback_query(F.data.in_(['edit_deadline']))
+async def editDeadline(call: CallbackQuery, state: FSMContext):
+    await call.answer("В разработке")
+#    res = await api.get_admin_deadlines(call.from_user.id, 0)
+#    builder = InlineKeyboardBuilder()
+#    if res["status"]!="OK":
+#        builder.button(text="Создать напоминание", callback_data="add_deadline")
+#        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+#        builder.adjust(1)
+#        await call.message.answer(res["message"], reply_markup=builder.as_markup())
+#    else:
+#        has_next = res['has_next']
+#        mes = await call.message.answer(res["message"])
+#        len_d = 0
+#        for dead_id in res["deadline_list"]:
+#            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id))
+#            len_d+=1
+#        buttons = [5 for _ in range(len_d//5)]
+#        if len_d%5!=0:
+#            buttons.append(len_d%5)
+#        if has_next:
+#            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = api.OFFSET, message_id=mes.message_id))
+#            buttons.append(1)
+#        builder.adjust(*buttons)
+#        await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
+#    await call.answer()
+
+@dp.callback_query(EditDeadline.filter(F.deadline_id != 0))
+async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
+#    deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_status_id)
+    deadline_name = await api.get_deadline_name(callback_data.deadline_id)
+    group_name = "Хуй"
+    builder = InlineKeyboardBuilder() 
+    builder.button(text="Изменить название дедлайна", callback_data=RenameDeadlineCallback(deadline_id=callback_data.deadline_id))
+    builder.button(text="Удалить дедлайн",
+                   callback_data=DeleteDeadlineCallback(deadline_id=callback_data.deadline_id))
+    builder.button(text="Изменить время дедлайна",
+                   callback_data=ReTimeDeadlineCallback(deadline_id=callback_data.deadline_id))
+    builder.button(text="\u25C0", callback_data=ReturnToDeadkineList(messageID=call.message.message_id))
+    builder.adjust(2)
+    await bot.edit_message_text(text="Выбрана дедлайн {} в группе {}".format(deadline_name, group_name), chat_id=call.message.chat.id,
+                                message_id=callback_data.delete_message_id)
+    await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                        reply_markup=builder.as_markup())
+
+
+
 @dp.callback_query(DeadPagination.filter(F.offset != -1))
 async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
     _dict = await api.get_deadlines(call.from_user.id, callback_data.offset)
@@ -559,6 +633,35 @@ async def dead_pagin(call: CallbackQuery, callback_data: DeadPagination):
     await call.answer()
 
 
+@dp.callback_query(EditDeadPagination.filter(F.offset != -1))
+async def edit_dead_pagin(call: CallbackQuery, callback_data: EditDeadPagination):
+    _dict = await api.get_admin_deadlines(call.from_user.id, callback_data.offset)
+    status = _dict["status"]
+    if status!="OK":
+        await call.message.answer(_dict["message"])
+    else:
+        builder = InlineKeyboardBuilder()
+        await bot.edit_message_text(text=emojize(_dict["message"]),chat_id=call.from_user.id, message_id=callback_data.message_id)
+        len_d = 0
+        for dead_id in _dict["deadline_list"]:
+            builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=EditDeadline(deadline_id=dead_id))
+            len_d+=1
+        has_next = _dict["has_next"]
+        buttons = [5 for _ in range(len_d//5)]
+        if len_d%5!=0:
+            buttons.append(len_d%5)
+        nav_button = 0
+        if callback_data.offset != 0:
+            builder.button(text=emojize(":left_arrow:"), callback_data=EditDeadPagination(offset = callback_data.offset - api.OFFSET, message_id=callback_data.message_id))
+            nav_button += 1
+        if has_next:
+            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = callback_data.offset + api.OFFSET, message_id=callback_data.message_id))
+            nav_button += 1
+        buttons.append(nav_button)
+        builder.adjust(*buttons)
+        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.message_id,
+                                            reply_markup=builder.as_markup())
+    await call.answer()
 
 
 
@@ -620,14 +723,20 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
         res = await api.get_deadlines(call.from_user.id, 0)
         await update_deadline_info(res, call.from_user.id, callback_data.message_id)
     else:
+#        deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_status_id)
         deadline_name = await api.get_deadline_name(callback_data.deadline_status_id)
+        group_name = "Хуй"
         builder = InlineKeyboardBuilder()
-        mes = await call.message.answer("Вы выбрали дедлайн {}, вам доступны след. действия".format(deadline_name))
+        mes = await call.message.answer("Вы выбрали дедлайн {} в группе {}, вам доступны след. действия".format(deadline_name, group_name))
         if is_done:
             builder.button(text="Удалить дедлайн".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="delete", del_mes = mes.message_id))
             builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change", del_mes = mes.message_id))
+            builder.button(text="Отмена".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="cansel", del_mes = mes.message_id))
+            builder.adjust(2,1)
         else:
             builder.button(text="Изменить статус".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="change", del_mes = mes.message_id))
+            builder.button(text="Отмена".format(deadline_name), callback_data=DeadStatus(deadline_status_id=callback_data.deadline_status_id, is_done=is_done, message_id=callback_data.message_id, d_type="cansel", del_mes = mes.message_id))
+            builder.adjust(1,1)
         await bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=mes.message_id, reply_markup=builder.as_markup())
         await call.answer()
 
@@ -636,10 +745,9 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
 async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus):
     if callback_data.d_type=="delete":
         await api.delete_deadline_status(callback_data.deadline_status_id)
-        await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
-    else:
+    elif callback_data.d_type=="change":
         await api.update_done_status(callback_data.deadline_status_id)
-        await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
+    await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
     res = await api.get_deadlines(call.from_user.id, 0)
     await update_deadline_info(res, call.from_user.id, callback_data.message_id)
     await call.answer()        
