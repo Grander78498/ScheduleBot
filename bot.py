@@ -611,7 +611,8 @@ async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCall
 @dp.callback_query(DeleteDeadlineCallback.filter(F.deadline_id != 0))
 async def delete_deadline(call: CallbackQuery, callback_data: DeleteDeadlineCallback):
     mes = await call.message.answer("Дед был удалён")
-    await api.delete_deadline_by_status(callback_data.deadline_id)
+    message_id, group_id = await api.delete_deadline_by_status(callback_data.deadline_id)
+    await bot.delete_message(chat_id=group_id, message_id=message_id)
     await deadline_list_return(call.from_user.id, callback_data.messageID, call.message)
     await asyncio.sleep(5)
     await bot.delete_message(chat_id=call.from_user.id, message_id=mes.message_id)
