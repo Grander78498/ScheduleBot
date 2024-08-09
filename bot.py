@@ -1353,21 +1353,26 @@ async def echo(message: Message, state: FSMContext) -> None:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 data = await state.get_data()
-                q = await message.answer("Название было изменено")
                 res = await api.update_deadline_text(data['renameDeadline']["dead_id"], message.text)
                 if res['status'] == 'ERROR':
-                    await message.answer(res['message'])
+                    q = await message.answer(res['message'])
+                    try:
+                        await bot.edit_message_text(text='Повторите ввод названия', chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
+                    except Exception:
+                        pass
                 else:
+                    await state.clear()
+                    q = await message.answer("Название было изменено")
                     message_id, text, chat_id = res['data']
                     await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                     await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
                     await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
-                    await asyncio.sleep(10)
-                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                    await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
+                await asyncio.sleep(5)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
             else:
                 a = await message.answer(res['message'])
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == States.renameQueue:
