@@ -66,7 +66,8 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
         res += deadline.text + '\n'
         group = await TelegramGroup.objects.aget(pk=deadline.group_id)
         res += 'Название группы: ' + (group.name if len(group.name) <= 32 else group.name[:29] + '...') + '\n'
-        res += f'Статус: {":check_mark_button:" if deadline_status.is_done else ":red_exclamation_mark:"}\n'
+        if not for_admin:
+            res += f'Статус: {":check_mark_button:" if deadline_status.is_done else ":red_exclamation_mark:"}\n'
         my_date = print_date_diff(timezone.now(), deadline.date)
         res += 'Дедлайн произойдёт через ' + my_date + '\n'
     return {'status': "OK", 'message': res, 'deadline_list': deadline_list, "has_next": has_next}

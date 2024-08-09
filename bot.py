@@ -580,7 +580,7 @@ async def editDeadline(call: CallbackQuery):
 
 @dp.callback_query(EditDeadline.filter(F.deadline_id != 0))
 async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
-    deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_status_id)
+    deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_id)
     builder = InlineKeyboardBuilder() 
     builder.button(text="Изменить название дедлайна", callback_data=RenameDeadlineCallback(deadline_id=callback_data.deadline_id))
     builder.button(text="Удалить дедлайн",
