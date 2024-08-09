@@ -174,6 +174,7 @@ class DeadStatus(CallbackData, prefix="ds"):
 
 class EditDeadline(CallbackData, prefix="ed"):
     deadline_id: int
+    message_id: int
 
 
 class QueueSwapPagination(CallbackData, prefix="qsp"):
@@ -566,7 +567,7 @@ async def editDeadline(call: CallbackQuery):
         mes = await call.message.answer(res["message"])
         len_d = 0
         for dead_id, _ in res["deadline_list"]:
-            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id))
+            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=mes.message_id))
             len_d+=1
         buttons = [5 for _ in range(len_d//5)]
         if len_d%5!=0:
@@ -588,7 +589,7 @@ async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
     builder.button(text="\u25C0", callback_data=ReturnToDeadlineList(messageID=call.message.message_id))
     builder.adjust(2)
     await bot.edit_message_text(text="Выбран дедлайн {} в группе {}".format(deadline_name, group_name), chat_id=call.message.chat.id,
-                                message_id=callback_data.delete_message_id)
+                                message_id=callback_data.message_id)
     await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                         reply_markup=builder.as_markup())
 
@@ -636,7 +637,7 @@ async def edit_dead_pagin(call: CallbackQuery, callback_data: EditDeadPagination
         await bot.edit_message_text(text=emojize(_dict["message"]),chat_id=call.from_user.id, message_id=callback_data.message_id)
         len_d = 0
         for dead_id, _ in _dict["deadline_list"]:
-            builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=EditDeadline(deadline_id=dead_id))
+            builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=callback_data.message_id))
             len_d+=1
         has_next = _dict["has_next"]
         buttons = [5 for _ in range(len_d//5)]
