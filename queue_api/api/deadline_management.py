@@ -53,7 +53,7 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
                              in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
     len_deadlines = len(deadline_statuses)
     deadline_statuses = deadline_statuses[offset:offset + OFFSET]
-    if offset + OFFSET <= len_deadlines:
+    if offset + OFFSET >= len_deadlines:
         has_next = False
     else:
         has_next = True

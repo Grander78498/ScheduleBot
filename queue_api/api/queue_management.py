@@ -135,7 +135,7 @@ async def get_all_queues(user_id: int, offset: int, for_swap: bool):
                       Queue.objects.filter(Q(queuemember__user_id=user_id)).order_by("date")]
     len_queues = len(queue_list)
     queue_list = queue_list[offset:offset + OFFSET]
-    if offset + OFFSET <= len_queues:
+    if offset + OFFSET >= len_queues:
         has_next = False
     else:
         has_next = True
