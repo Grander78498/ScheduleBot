@@ -571,7 +571,7 @@ async def editDeadline(call: CallbackQuery):
         has_next = res['has_next']
         mes = await call.message.answer(res["message"])
         len_d = 0
-        for dead_id, _ in res["deadline_list"]:
+        for dead_id in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=mes.message_id))
             len_d+=1
         buttons = [5 for _ in range(len_d//5)]
@@ -622,7 +622,7 @@ async def deadline_list_return(user_id, messageID, message: types.Message):
     else:
         has_next = res['has_next']
         len_d = 0
-        for dead_id, _ in res["deadline_list"]:
+        for dead_id in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=r.message_id))
             len_d+=1
         buttons = [5 for _ in range(len_d//5)]
@@ -682,7 +682,7 @@ async def edit_dead_pagin(call: CallbackQuery, callback_data: EditDeadPagination
         builder = InlineKeyboardBuilder()
         await bot.edit_message_text(text=emojize(_dict["message"]),chat_id=call.from_user.id, message_id=callback_data.message_id)
         len_d = 0
-        for dead_id, _ in _dict["deadline_list"]:
+        for dead_id in _dict["deadline_list"]:
             builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=callback_data.message_id))
             len_d+=1
         has_next = _dict["has_next"]
@@ -1125,9 +1125,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         builder.adjust(1)
         await message.answer("Очередь была создана", reply_markup=builder.as_markup())
         mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                     text="Очередь {} будет создана через {}.".format(data['text'], date, notif_date) +
-                                          (" За {} до этого будет отправлено напоминание".format(notif_date)
-                                           if notif_date != "" else ""))
+                                     text=api.print_queue_message(data['text'], date, notif_date))
         await api.update_message_id(queue_id, mes.message_id, data['group_id'])
         await api.create_queue_tasks(queue_id, data["group_id"])
     else:
@@ -1138,11 +1136,7 @@ async def putInDb(message: Message, state: FSMContext) -> None:
         if data["deadline_roots"]:
             await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
             mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                         text="Ваша смертная линия {} наступит через {}.".format(data['text'], date,
-                                                                                                 notif_date) +
-                                              (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
-                                                  notif_date)
-                                               if notif_date != "" else ""))
+                                         text=api.print_deadline_message(data['text'], date))
             await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
             await api.create_queue_tasks(deadline_id, data["group_id"])
         else:

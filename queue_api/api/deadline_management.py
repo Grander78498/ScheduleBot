@@ -21,6 +21,11 @@ async def get_deadline_info(deadline_id: int):
     return group_id, text, thread_id, date, print_date_diff(queue_notif_date, deadline.date)
 
 
+async def delete_deadline_by_status(deadline_status_id: int):
+    deadline_status = await DeadlineStatus.objects.aget(pk=deadline_status_id)
+    await delete_deadline(deadline_status.deadline_id)
+
+
 async def delete_deadline(deadline_id: int):
     deadline = await Deadline.objects.select_related('group').aget(pk=deadline_id)
     tasks = PeriodicTask.objects.filter(name__in=[f"{deadline.text} {deadline.pk} {deadline.group.name}",
@@ -98,3 +103,7 @@ async def check_deadline_status(deadline_status_id: int):
 async def get_deadline_name(deadline_status_id: int):
     deadline_status = await DeadlineStatus.objects.select_related('deadline', 'deadline__group').aget(pk=deadline_status_id)
     return deadline_status.deadline.text, deadline_status.deadline.group.name
+
+
+def print_deadline_message(text, date):
+    return "Ваша смертная линия {} наступит через {}.".format(text, date)

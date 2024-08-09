@@ -189,3 +189,9 @@ async def check_event_count(user_id: int, event_type: EventType):
     if not is_queue and (await Deadline.objects.filter(creator_id=user_id).acount()) > DEADLINE_COUNT:
         return {"status": "ERROR", "message": "Куда тебе столько дедлайнов то???"}
     return {"status": 'OK'}
+
+
+def print_queue_message(text, date, notif_date):
+    return "Очередь {} будет создана через {}.".format(text, date) + \
+            (" За {} до этого будет отправлено напоминание".format(notif_date)
+             if notif_date != "" else "")
