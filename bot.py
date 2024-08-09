@@ -604,34 +604,34 @@ async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
 async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCallback, state: FSMContext):
     mes = await call.message.answer("Напиши новое название")
     await state.update_data(renameDeadline={"message_id":mes.message_id, "dead_id":callback_data.deadline_id, "edit_message_id":call.message.message_id})
+    await state.set_state(Deadline.renameDeadline)
 
 
 async def deadline_list_return(user_id, messageID, message: types.Message):
     res = await api.get_deadlines(user_id, 0, True)
     builder = InlineKeyboardBuilder()
+    r = await bot.edit_message_text(text=res["message"], chat_id=user_id,
+                                    message_id=messageID)
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
         builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
         builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
         builder.adjust(1)
-        r = await bot.edit_message_text(text=res["message"], chat_id=user_id,
-                                        message_id=messageID)
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID, reply_markup=builder.as_markup())
     else:
         has_next = res['has_next']
-        mes = await message.answer(res["message"])
         len_d = 0
         for dead_id, _ in res["deadline_list"]:
-            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=mes.message_id))
+            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=r.message_id))
             len_d+=1
         buttons = [5 for _ in range(len_d//5)]
         if len_d%5!=0:
             buttons.append(len_d%5)
         if has_next:
-            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = api.OFFSET, message_id=mes.message_id))
+            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = api.OFFSET, message_id=r.message_id))
             buttons.append(1)
         builder.adjust(*buttons)
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=mes.message_id, reply_markup=builder.as_markup())
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=r.message_id, reply_markup=builder.as_markup())
 
 
 @dp.callback_query(ReturnToDeadlineList.filter(F.messageID != 0))
