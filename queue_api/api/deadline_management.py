@@ -39,8 +39,19 @@ async def delete_deadline_request(user_id: int, group_id: int):
     await deadline_request.adelete()
 
 
-async def get_deadlines(user_id: int, offset: int):
-    deadline_statuses = [deadline async for deadline in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
+async def get_deadlines(user_id: int, offset: int, for_admin: bool):
+    if for_admin:
+        groups = [group async for group in TelegramGroup.objects.filter(main_admin_id=user_id)]
+        main_deadline_statuses = []
+        for group in groups:
+            main_deadline_statuses.extend([deadline_status async for deadline_status
+                                           in DeadlineStatus.objects.filter(deadline__group_id=group.pk)])
+        creator_deadline_statuses = [deadline_status async for deadline_status
+                                     in DeadlineStatus.objects.filter(deadline__creator_id=user_id)]
+        deadline_statuses = list(set(main_deadline_statuses).union(set(creator_deadline_statuses)))
+    else:
+        deadline_statuses = [deadline async for deadline
+                             in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
     len_deadlines = len(deadline_statuses)
     deadline_statuses = deadline_statuses[offset:offset + OFFSET]
     if len(deadline_statuses) < OFFSET or len(deadline_statuses) == len_deadlines:
@@ -85,5 +96,5 @@ async def check_deadline_status(deadline_status_id: int):
 
 
 async def get_deadline_name(deadline_status_id: int):
-    deadline_status = await DeadlineStatus.objects.select_related('deadline').aget(pk=deadline_status_id)
-    return deadline_status.deadline.text
+    deadline_status = await DeadlineStatus.objects.select_related('deadline', 'deadline__group').aget(pk=deadline_status_id)
+    return deadline_status.deadline.text, deadline_status.deadline.group.name
