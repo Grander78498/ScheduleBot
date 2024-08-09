@@ -620,7 +620,6 @@ async def deadline_list_return(user_id, messageID, message: types.Message):
         builder.adjust(1)
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID, reply_markup=builder.as_markup())
     else:
-        await bot.edit_message_text()
         has_next = res['has_next']
         len_d = 0
         for dead_id, _ in res["deadline_list"]:
