@@ -1052,7 +1052,7 @@ async def next_hour(call: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query(F.data.in_(['today']))
-async def tomorrow(call: CallbackQuery, state: FSMContext):
+async def today(call: CallbackQuery, state: FSMContext):
     now = datetime.datetime.now()
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
