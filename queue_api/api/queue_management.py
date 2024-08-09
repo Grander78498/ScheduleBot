@@ -88,11 +88,11 @@ async def print_private_queue(queue_id: int, user_id: int, bot_name: str):
 
 
 async def delete_queue(queue_id: int):
-    queue = await Queue.objects.aget(pk=queue_id)
+    queue = await Queue.objects.select_related('group').aget(pk=queue_id)
     chat_list, message_list = ([message.chat_id async for message in queue.message_set.all()],
                                [message.message_id async for message in queue.message_set.all()])
-    tasks = PeriodicTask.objects.filter(name__in=[f"{queue.text} {queue.pk} {queue.name}",
-                                                  f"Ready {queue.text} {queue.pk} {queue.name}"])
+    tasks = PeriodicTask.objects.filter(name__in=[f"{queue.text} {queue.pk} {queue.group.name}",
+                                                  f"Ready {queue.text} {queue.pk} {queue.group.name}"])
     async for task in tasks:
         await task.adelete()
     await queue.adelete()
@@ -127,11 +127,12 @@ async def rename_queue(queue_id: int, message: str):
 
 
 async def get_all_queues(user_id: int, offset: int, for_swap: bool):
-    user = await TelegramUser.objects.aget(pk=user_id)
-    queue_list = [queue async for queue in user.user_queue.all().order_by('date')]
     if not for_swap:
-        creator_list = [queue async for queue in Queue.objects.filter(creator_id=user_id).order_by('date')]
-        queue_list = list(set(queue_list).union(set(creator_list)))
+        queue_list = [queue async for queue in
+                      Queue.objects.filter(Q(creator_id=user_id) | Q(queuemember__user_id=user_id))]
+    else:
+        queue_list = [queue async for queue in
+                      Queue.objects.filter(Q(queuemember__user_id=user_id))]
     len_queues = len(queue_list)
     queue_list = queue_list[offset:offset + OFFSET]
     if len(queue_list) < OFFSET or len(queue_list) == len_queues:

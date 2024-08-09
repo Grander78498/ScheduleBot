@@ -22,9 +22,9 @@ async def get_deadline_info(deadline_id: int):
 
 
 async def delete_deadline(deadline_id: int):
-    deadline = await Deadline.objects.aget(pk=deadline_id)
-    tasks = PeriodicTask.objects.filter(name__in=[f"{deadline.text} {deadline.pk} {deadline.name}",
-                                                  f"Ready {deadline.text} {deadline.pk} {deadline.name}"])
+    deadline = await Deadline.objects.select_related('group').aget(pk=deadline_id)
+    tasks = PeriodicTask.objects.filter(name__in=[f"{deadline.text} {deadline.pk} {deadline.group.name}",
+                                                  f"Ready {deadline.text} {deadline.pk} {deadline.group.name}"])
     async for task in tasks:
         await task.adelete()
     await deadline.adelete()
