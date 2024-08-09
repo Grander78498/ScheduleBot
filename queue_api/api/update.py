@@ -45,7 +45,7 @@ async def update_done_status(deadline_status_id: int):
 async def update_deadline_text(deadline_status_id: int, deadline_text: str):
     deadline = await Deadline.objects.aget(deadlinestatus__id=deadline_status_id)
     deadline.text = deadline_text
-    message_id = await Message.objects.filter(event_id=deadline.pk).afirst()
+    message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
     text = print_deadline_message(deadline_text, print_date_diff(timezone.now(), deadline.date))
     chat_id = deadline.group_id
     await deadline.asave()
