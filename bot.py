@@ -205,6 +205,7 @@ class RenameDeadlineCallback(CallbackData, prefix="rdc"):
 
 class DeleteDeadlineCallback(CallbackData, prefix="ddc"):
     deadline_id: int
+    messageID: int
 
 
 class ReturnToDeadlineList(CallbackData, prefix="rtl"):
@@ -590,7 +591,7 @@ async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
     builder = InlineKeyboardBuilder() 
     builder.button(text="Изменить название дедлайна", callback_data=RenameDeadlineCallback(deadline_id=callback_data.deadline_id))
     builder.button(text="Удалить дедлайн",
-                   callback_data=DeleteDeadlineCallback(deadline_id=callback_data.deadline_id))
+                   callback_data=DeleteDeadlineCallback(deadline_id=callback_data.deadline_id, messageID=call.message.message_id))
     builder.button(text="\u25C0", callback_data=ReturnToDeadlineList(messageID=call.message.message_id))
     builder.adjust(2)
     await bot.edit_message_text(text="Выбран дедлайн {} в группе {}".format(deadline_name, group_name), chat_id=call.message.chat.id,
@@ -607,6 +608,14 @@ async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCall
     await state.set_state(Deadline.renameDeadline)
     await call.answer()
 
+@dp.callback_query(DeleteDeadlineCallback.filter(F.deadline_id != 0))
+async def delete_deadline(call: CallbackQuery, callback_data: DeleteDeadlineCallback):
+    mes = await call.message.answer("Дед был удалён")
+    await api.delete_deadline_by_status(callback_data.deadline_id)
+    await deadline_list_return(call.from_user.id, callback_data.messageID, call.message)
+    await asyncio.sleep(5)
+    await bot.delete_message(chat_id=call.from_user.id, message_id=mes.message_id)
+    await call.answer()
 
 async def deadline_list_return(user_id, messageID, message: types.Message):
     res = await api.get_deadlines(user_id, 0, True)
@@ -1345,8 +1354,9 @@ async def echo(message: Message, state: FSMContext) -> None:
                 data = await state.get_data()
                 q = await message.answer("Название было изменено")
                 await api.update_deadline_text(data['renameDeadline']["dead_id"], message.text)
-                await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
+                message_id, text, chat_id = await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
+                await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
                 await asyncio.sleep(10)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
