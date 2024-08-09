@@ -976,7 +976,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
-    _, _, message = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
+    _, message, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
     await call.message.answer(text=message, parse_mode='MarkdownV2')
     await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
