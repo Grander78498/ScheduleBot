@@ -1379,6 +1379,7 @@ async def echo(message: Message, state: FSMContext) -> None:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 data = await state.get_data()
+                await state.clear()
                 await api.rename_queue(data["renameQueue"], message.text)
                 # Здесь был render queue
                 builder = InlineKeyboardBuilder()
