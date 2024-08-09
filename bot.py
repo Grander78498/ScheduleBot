@@ -620,6 +620,7 @@ async def deadline_list_return(user_id, messageID, message: types.Message):
         builder.adjust(1)
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID, reply_markup=builder.as_markup())
     else:
+        await bot.edit_message_text()
         has_next = res['has_next']
         len_d = 0
         for dead_id, _ in res["deadline_list"]:
@@ -1350,8 +1351,8 @@ async def echo(message: Message, state: FSMContext) -> None:
             if res['status'] == 'OK':
                 data = await state.get_data()
                 q = await message.answer("Название было изменено")
-                await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                 await api.update_deadline_text(data['renameDeadline']["dead_id"], message.text)
+                await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
                 await asyncio.sleep(10)
                 await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
