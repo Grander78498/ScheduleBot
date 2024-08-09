@@ -42,7 +42,8 @@ async def delete_deadline_request(user_id: int, group_id: int):
 async def get_deadlines(user_id: int, offset: int, for_admin: bool):
     if for_admin:
         deadline_statuses = [deadline_status async for deadline_status in DeadlineStatus.objects.filter(
-            (Q(deadline__group__main_admin_id=user_id) | Q(deadline__creator_id=user_id)) & Q(user_id=user_id))]
+            (Q(deadline__group__main_admin_id=user_id) | Q(deadline__creator_id=user_id)) &
+            Q(user_id=user_id)).order_by('deadline__date')]
     else:
         deadline_statuses = [deadline async for deadline
                              in DeadlineStatus.objects.filter(user_id=user_id).order_by('deadline__date')]
