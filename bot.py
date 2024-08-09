@@ -565,7 +565,7 @@ async def editDeadline(call: CallbackQuery):
         has_next = res['has_next']
         mes = await call.message.answer(res["message"])
         len_d = 0
-        for dead_id in res["deadline_list"]:
+        for dead_id, _ in res["deadline_list"]:
             builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id))
             len_d+=1
         buttons = [5 for _ in range(len_d//5)]
@@ -635,7 +635,7 @@ async def edit_dead_pagin(call: CallbackQuery, callback_data: EditDeadPagination
         builder = InlineKeyboardBuilder()
         await bot.edit_message_text(text=emojize(_dict["message"]),chat_id=call.from_user.id, message_id=callback_data.message_id)
         len_d = 0
-        for dead_id in _dict["deadline_list"]:
+        for dead_id, _ in _dict["deadline_list"]:
             builder.button(text=("{}".format(len_d + callback_data.offset + 1)), callback_data=EditDeadline(deadline_id=dead_id))
             len_d+=1
         has_next = _dict["has_next"]
