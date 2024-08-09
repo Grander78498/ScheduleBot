@@ -36,5 +36,6 @@ async def change_tz(user_id: int, tz: str):
 
 async def update_done_status(deadline_status_id: int):
     deadline_status = await DeadlineStatus.objects.aget(pk=deadline_status_id)
-    deadline_status.is_done = not F('is_done')
+    status = deadline_status.is_done
+    deadline_status.is_done = not status
     await deadline_status.asave()
