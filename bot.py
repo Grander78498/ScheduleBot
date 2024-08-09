@@ -605,6 +605,7 @@ async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCall
     mes = await call.message.answer("Напиши новое название")
     await state.update_data(renameDeadline={"message_id":mes.message_id, "dead_id":callback_data.deadline_id, "edit_message_id":call.message.message_id})
     await state.set_state(Deadline.renameDeadline)
+    await call.answer()
 
 
 async def deadline_list_return(user_id, messageID, message: types.Message):
