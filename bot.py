@@ -780,7 +780,7 @@ async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback,
 @dp.callback_query(F.data.in_(['add_queue']))
 async def add_queue(call: CallbackQuery, state: FSMContext):
     if call.message.chat.type == "private":
-        res = await api.check_event_count(call.from_user.id, EventType.DEADLINE)
+        res = await api.check_event_count(call.from_user.id, EventType.QUEUE)
         if res['status'] == 'ERROR':
             await call.answer(res['message'])
         else:
