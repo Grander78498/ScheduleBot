@@ -45,7 +45,7 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
         main_deadline_statuses = []
         for group in groups:
             main_deadline_statuses.extend([deadline_status async for deadline_status
-                                           in DeadlineStatus.objects.filter(deadline__group_id=group.pk)])
+                                           in DeadlineStatus.objects.filter(deadline__group_id=group.pk, user_id=user_id)])
         creator_deadline_statuses = [deadline_status async for deadline_status
                                      in DeadlineStatus.objects.filter(deadline__creator_id=user_id)]
         deadline_statuses = list(set(main_deadline_statuses).union(set(creator_deadline_statuses)))
