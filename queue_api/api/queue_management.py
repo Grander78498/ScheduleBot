@@ -132,7 +132,7 @@ async def get_all_queues(user_id: int, offset: int, for_swap: bool):
 #        queue_list = [queue async for queue in
 #                      Queue.objects.filter(Q(creator_id=user_id) | Q(queuemember__user_id=user_id)).order_by("date")]
         queue_list = [queue async for queue in
-                      Queue.objects.filter(Q(creator_id=user_id) |  Q(id__in=sub_q)).order_by("date")]
+                      Queue.objects.filter(Q(creator_id=user_id) | Q(id__in=sub_q)).order_by("date")]
     else:
         queue_list = [queue async for queue in
                       Queue.objects.filter(id__in=sub_q).order_by("date")]
