@@ -7,7 +7,7 @@ from django.conf import settings
 
 from queue_api import api
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters.command import Command
+from aiogram.filters.command import Command, CommandStart, CommandObject
 from aiogram import F
 from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER
 from aiogram.types import ChatMemberUpdated
@@ -19,6 +19,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 from config import config
 from queue_api.api import EventType
+from aiogram.utils.deep_linking import decode_payload
 
 from emoji import emojize
 
@@ -292,20 +293,20 @@ async def cmd_startgroup(message: types.Message) -> None:
                 "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message) -> None:
+@dp.message(CommandStart(deep_link=True))
+async def cmd_start(message: types.Message, command: CommandObject) -> None:
     if message.chat.type == "private":
         if len(str(message.text).split()) > 1:
-            if str(message.text).split()[1].startswith("queue_add"):
-                queueID = int(str(message.text).split()[1][9:])
-                await api.save_user(message.chat.id, message.from_user.full_name)
-                await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
-                # Здесь был render queue
-                link = await api.get_queue_message_link(queueID, message.from_user.id)
-                return_builder = InlineKeyboardBuilder()
-                if len(link) != 0:
-                    return_builder.button(text="Вернуться в группу", url=link)
-                await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
+            args = command.args
+            queueID = int(decode_payload(args))
+            await api.save_user(message.chat.id, message.from_user.full_name)
+            await api.add_user_to_queue(queueID, message.chat.id, message.from_user.full_name)
+            # Здесь был render queue
+            link = await api.get_queue_message_link(queueID, message.from_user.id)
+            return_builder = InlineKeyboardBuilder()
+            if len(link) != 0:
+                return_builder.button(text="Вернуться в группу", url=link)
+            await message.answer("Тебя добавили в очередь", reply_markup=return_builder.as_markup())
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу",
@@ -808,7 +809,7 @@ async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus)
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
     status = await api.check_requests(call.from_user.id, callback_data.queueID)
     if not status["in"] and not status["out"]:
-        _, text, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
+        _, text, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", bot)
         queue_list_message = await call.message.answer(text, parse_mode="MarkdownV2")
         simple_message = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
         await state.set_state(States.swap)
@@ -938,7 +939,7 @@ async def SimpleQueueChosen(call: CallbackQuery, callback_data: SimpleQueueSelec
     res = await api.check_user_in_queue(call.from_user.id, callback_data.queueID)
     if res["status"]=="OK":
         message_id = await api.get_message_id(callback_data.queueID, call.from_user.id)
-        _,string,_ = await api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
+        _,string,_ = await api.print_private_queue(callback_data.queueID, call.from_user.id, bot)
         if message_id is not None:
             try:
                 await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=message_id,
@@ -993,7 +994,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
 
 @dp.callback_query(DeleteQueueMemberCallback.filter(F.messageID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
-    _, message, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
+    _, message, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", bot)
     queue_message = await call.message.answer(text=message, parse_mode='MarkdownV2')
     please_message = await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
@@ -1457,7 +1458,7 @@ async def send_ready(event_id, thread_id, group_id):
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=event_id))
         builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
         builder.adjust(1)
-        _, message, _ = await api.print_queue(event_id, False, await get_bot_name())
+        _, message, _ = await api.print_queue(event_id, False, bot)
     else:
         message = await api.print_deadline(event_id)
         await api.delete_deadline(event_id)
@@ -1475,7 +1476,7 @@ async def send_notification(queue_id, thread_id, group_id, message):
 
 async def render_queue(queue_id: int, private: bool):
     try:
-        group_id, queue, message_list = await api.print_queue(queue_id, private, await get_bot_name())
+        group_id, queue, message_list = await api.print_queue(queue_id, private, bot)
         builder = InlineKeyboardBuilder()
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
         builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))

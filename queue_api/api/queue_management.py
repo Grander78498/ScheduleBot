@@ -6,6 +6,7 @@
 from .imports import *
 from .celery_calls import send_render_task
 from .utils import get_queue_link, EventType, OFFSET
+from aiogram import Bot
 
 
 QUEUE_COUNT = 25
@@ -28,11 +29,11 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     return {"started": user.is_started, "queue_member": not created}
 
 
-async def print_queue(queue_id: int, private: bool, bot_name: str):
+async def print_queue(queue_id: int, private: bool, bot: Bot):
     queue = await Queue.objects.aget(pk=queue_id)
     members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.text}\n"
-    link = await get_queue_link(queue_id, bot_name)
+    link = await get_queue_link(queue_id, bot)
     res_string += f"Ссылка для присоединения: {link}\n"
     res_string += "__________________________\n"
     if private:
@@ -53,19 +54,19 @@ async def print_queue(queue_id: int, private: bool, bot_name: str):
                 res_string += "\n"
 
     message_list = [message.message_id async for message in queue.message_set.all()]
-    wrong_symbols = './()=_'
+    wrong_symbols = './()=_-<>'
     for symbol in wrong_symbols:
         res_string = res_string.replace(symbol, f"\\{symbol}")
     return queue.group_id, res_string, message_list
 
 
-async def print_private_queue(queue_id: int, user_id: int, bot_name: str):
+async def print_private_queue(queue_id: int, user_id: int, bot: Bot):
     queue = await Queue.objects.aget(pk=queue_id)
     group = await TelegramGroup.objects.aget(pk=queue.group_id)
     members = [user async for user in queue.queuemember_set.order_by("pk")]
     res_string = f"Название очереди: {queue.text}\n"
     res_string += f"Название группы: {group.name}\n"
-    link = await get_queue_link(queue_id, bot_name)
+    link = await get_queue_link(queue_id, bot)
     res_string += f"Ссылка для присоединения: {link}\n"
     res_string += "__________________________\n"
     dots_added = False
@@ -81,7 +82,7 @@ async def print_private_queue(queue_id: int, user_id: int, bot_name: str):
             res_string += "............."
             dots_added = True
     message_list = [message.message_id async for message in queue.message_set.all()]
-    wrong_symbols = './()=_'
+    wrong_symbols = './()=_-><'
     for symbol in wrong_symbols:
         res_string = res_string.replace(symbol, f"\\{symbol}")
     return queue.group_id, res_string, message_list

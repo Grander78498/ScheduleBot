@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     bot_token: SecretStr
     api_id: int
     api_hash: SecretStr
+    cypher_key: SecretStr
     host: str = '127.0.0.1'
     port: str = '5432'
     user: str = 'postgres'

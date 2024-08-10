@@ -4,6 +4,8 @@
 
 
 from .imports import *
+from aiogram.utils.deep_linking import create_start_link
+from aiogram import Bot
 
 # telethon_event_loop = asyncio.new_event_loop()
 
@@ -163,9 +165,9 @@ async def get_message_id(event_id: int, chat_id: int):
     return message.message_id
 
 
-async def get_queue_link(queue_id: int, bot_name: str):
-    return "https://t.me/{}?start=queue_add{}".format(bot_name, queue_id)
-
+async def get_queue_link(queue_id: int, bot: Bot):
+    # return "https://t.me/{}?start=queue_add{}".format(bot_name, encrypt(queue_id))
+    return await create_start_link(bot, str(queue_id), encode=True)
 
 async def check_user_in_queue(user_id, queue_id):
     try:
