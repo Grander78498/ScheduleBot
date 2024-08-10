@@ -127,12 +127,15 @@ async def rename_queue(queue_id: int, message: str):
 
 
 async def get_all_queues(user_id: int, offset: int, for_swap: bool):
+    sub_q = QueueMember.objects.filter(user_id=user_id).values_list("queue", flat=True)
     if not for_swap:
+#        queue_list = [queue async for queue in
+#                      Queue.objects.filter(Q(creator_id=user_id) | Q(queuemember__user_id=user_id)).order_by("date")]
         queue_list = [queue async for queue in
-                      Queue.objects.filter(Q(creator_id=user_id) | Q(queuemember__user_id=user_id)).order_by("date")]
+                      Queue.objects.filter(Q(creator_id=user_id) |  Q(id__in=sub_q)).order_by("date")]
     else:
         queue_list = [queue async for queue in
-                      Queue.objects.filter(Q(queuemember__user_id=user_id)).order_by("date")]
+                      Queue.objects.filter(id__in=sub_q).order_by("date")]
     len_queues = len(queue_list)
     queue_list = queue_list[offset:offset + OFFSET]
     if offset + OFFSET >= len_queues:

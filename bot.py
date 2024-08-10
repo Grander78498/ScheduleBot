@@ -140,11 +140,13 @@ class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
 
 
 class DeleteQueueMemberCallback(CallbackData, prefix="DeleteQueueMember"):
+    messageID: int
     queueID: int
 
 
 class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
     queueID: int
+    messageID: int
 
 
 class SwapCallback(CallbackData, prefix="sp"):
@@ -890,16 +892,17 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-@dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
-async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
-    _dict = await api.get_all_queues(call.from_user.id, 0, False)
+
+
+async def queue_return(user_id, messageID):
+    _dict = await api.get_all_queues(user_id, 0, False)
     status = _dict["status"]
-    r = await bot.edit_message_text(text=_dict["message"], chat_id=call.message.chat.id,
-                                    message_id=callback_data.messageID, parse_mode='MarkdownV2')
+    r = await bot.edit_message_text(text=_dict["message"], chat_id=user_id,
+                                    message_id=messageID, parse_mode='MarkdownV2')
     if status!="OK":
         await call.message.answer(_dict["message"])
         uilder = InlineKeyboardBuilder()
-        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=callback_data.messageID,
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID,
                                             reply_markup=uilder.as_markup())
     else:
         lenq = len(_dict["data"])
@@ -919,36 +922,48 @@ async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueL
             builder.button(text=emojize(":right_arrow:"), callback_data=QueuePagination(offset = api.OFFSET, message_id=r.message_id))
             buttons.append(1)
         builder.adjust(*buttons)
-        await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
+
+
+@dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
+async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
+    await queue_return(call.from_user.id, callback_data.messageID)
     await call.answer()
 
 
 
 @dp.callback_query(SimpleQueueSelectCallback.filter(F.queueID != 0))
 async def SimpleQueueChosen(call: CallbackQuery, callback_data: SimpleQueueSelectCallback):
-    message_id = await api.get_message_id(callback_data.queueID, call.from_user.id)
-    _,string,_ = await api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
-    if message_id is not None:
-        try:
-            await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=message_id,
-                                        parse_mode='MarkdownV2')
-        except Exception:
-            pass
-        await call.answer('Сообщение с этой очередью было изменено')
+    res = await api.check_user_in_queue(call.from_user.id, callback_data.queueID)
+    if res["status"]=="OK":
+        message_id = await api.get_message_id(callback_data.queueID, call.from_user.id)
+        _,string,_ = await api.print_private_queue(callback_data.queueID, call.from_user.id,  await get_bot_name())
+        if message_id is not None:
+            try:
+                await bot.edit_message_text(text=string, chat_id=call.from_user.id, message_id=message_id,
+                                            parse_mode='MarkdownV2')
+                await call.answer('Сообщение с этой очередью было изменено')
+            except Exception:
+                mes = await call.message.answer(string, parse_mode='MarkdownV2')
+                await api.update_message_id(callback_data.queueID, mes.message_id, call.from_user.id)
+                await call.answer()
+        else:
+            mes = await call.message.answer(string, parse_mode='MarkdownV2')
+            await api.update_message_id(callback_data.queueID, mes.message_id, call.from_user.id)
+            await call.answer()
     else:
-        mes = await call.message.answer(string, parse_mode='MarkdownV2')
-        await api.update_message_id(callback_data.queueID, mes.message_id, call.from_user.id)
-        await call.answer()
+        await call.answer(res["message"])
+        await queue_return(call.from_user.id, call.message.message_id)
 
 
 
 @dp.callback_query(AdminQueueSelectCallback.filter(F.queueID != 0))
 async def AdminQueueChosen(call: CallbackQuery, callback_data: AdminQueueSelectCallback):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID))
+    builder.button(text="Изменить название очереди", callback_data=RenameQueueCallback(queueID=callback_data.queueID, messageID=call.message.message_id))
     builder.button(text="Удалить участника очереди",
-                   callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID))
+                   callback_data=DeleteQueueMemberCallback(queueID=callback_data.queueID,messageID=call.message.message_id))
     builder.button(text="Удалить очередь",
                    callback_data=DeleteQueueCallback(queueID=callback_data.queueID, messageID=call.message.message_id))
     builder.button(text="Удалить первого из очереди",
@@ -970,31 +985,33 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
     res = await api.remove_first(callback_data.queueID)
     if not res:
         await call.answer("Данная очередь пуста")
+    else:
+        await call.answer("Первый удалён")
+    await queue_return(call.from_user.id, call.message.message_id)
     # Здесь был render queue
-    await call.answer()
 
 
-@dp.callback_query(DeleteQueueMemberCallback.filter(F.queueID != 0))
+@dp.callback_query(DeleteQueueMemberCallback.filter(F.messageID != 0))
 async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMemberCallback, state: FSMContext):
     _, message, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", await get_bot_name())
-    await call.message.answer(text=message, parse_mode='MarkdownV2')
-    await call.message.answer("Введите номер удаляемого участника")
+    queue_message = await call.message.answer(text=message, parse_mode='MarkdownV2')
+    please_message = await call.message.answer("Введите номер удаляемого участника")
     await state.set_state(States.deleteQueueMember)
-    await state.update_data(deleteQueueMember=callback_data.queueID)
+    await state.update_data(deleteQueueMember={"messageID":callback_data.messageID, "queue_message":queue_message.message_id, "please_message":please_message.message_id})
     await call.answer()
 
 
 @dp.callback_query(RenameQueueCallback.filter(F.queueID != 0))
 async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, state: FSMContext):
-    await call.message.answer("Введите новое название очереди")
+    r = await call.message.answer("Введите новое название очереди")
     await state.set_state(States.renameQueue)
-    await state.update_data(renameQueue=callback_data.queueID)
+    await state.update_data(renameQueue={"queueID":callback_data.queueID, "messageID":callback_data.messageID, "del_message":r.message_id})
     await call.answer()
 
 
 @dp.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    await bot.delete_message(chat_id=call.message.chat.id, message_id=callback_data.messageID)
+    await queue_return(call.from_user.id, callback_data.messageID)
     chat_list, message_list = await api.delete_queue(callback_data.queueID)
     for chat_id, message_id in zip(chat_list, message_list):
         try:
@@ -1380,17 +1397,23 @@ async def echo(message: Message, state: FSMContext) -> None:
             if res['status'] == 'OK':
                 data = await state.get_data()
                 await state.clear()
-                await api.rename_queue(data["renameQueue"], message.text)
+                await api.rename_queue(data["renameQueue"]["queueID"], message.text)
+                await queue_return(message.chat.id, data["renameQueue"]["messageID"])
+                await bot.delete_message(chat_id=message.chat.id, message_id=data["renameQueue"]["del_message"])
                 # Здесь был render queue
-                builder = InlineKeyboardBuilder()
-                builder.button(text="Создать очередь", callback_data="add")
-                builder.button(text="Вывести существующие очереди", callback_data="print")
-                builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-                builder.adjust(1)
-                await message.answer("Название очереди было успешно изменено", reply_markup=builder.as_markup())
+#                builder = InlineKeyboardBuilder()
+#                builder.button(text="Создать очередь", callback_data="add")
+#                builder.button(text="Вывести существующие очереди", callback_data="print")
+#                builder.button(text="Запросить перемещение в очереди", callback_data="swap")
+#                builder.adjust(1)
+                a = await message.answer("Название очереди было успешно изменено")
+                await asyncio.sleep(5)
+                await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
+                await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                await state.clear()
             else:
                 a = await message.answer(res['message'])
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
@@ -1400,17 +1423,25 @@ async def echo(message: Message, state: FSMContext) -> None:
             result = await api.delete_queue_member(message.text)
             match result:
                 case "Incorrect":
-                    await message.answer("Введён некорректный номер, попробуйте ещё раз")
+                    q = await message.answer("Введён некорректный номер, попробуйте ещё раз")
+                    await asyncio.sleep(5)
+                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                    await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
                 case "Doesn't exist":
-                    await message.answer('Введённой позиции в очереди нет')
+                    q = await message.answer('Введённой позиции в очереди нет')
+                    await asyncio.sleep(5)
+                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                    await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
                 case _:
+                    await state.clear()
                     # Здесь был render queue
-                    builder = InlineKeyboardBuilder()
-                    builder.button(text="Создать очередь", callback_data="add")
-                    builder.button(text="Вывести существующие очереди", callback_data="print")
-                    builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-                    builder.adjust(1)
-                    await message.answer("Участник был успешно удалён", reply_markup=builder.as_markup())
+                    await bot.delete_message(chat_id=message.chat.id, message_id=data["deleteQueueMember"]["queue_message"])
+                    await bot.delete_message(chat_id=message.chat.id, message_id=data["deleteQueueMember"]["please_message"])
+                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                    await queue_return(message.chat.id, data["deleteQueueMember"]["messageID"])
+                    q = await message.answer("Участник был успешно удалён")
+                    await asyncio.sleep(5)
+                    await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
         else:
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 

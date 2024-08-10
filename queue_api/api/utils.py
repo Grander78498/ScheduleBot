@@ -165,3 +165,15 @@ async def get_message_id(event_id: int, chat_id: int):
 
 async def get_queue_link(queue_id: int, bot_name: str):
     return "https://t.me/{}?start=queue_add{}".format(bot_name, queue_id)
+
+
+async def check_user_in_queue(user_id, queue_id):
+    try:
+        queue = await Queue.objects.aget(pk=queue_id)
+    except Exception as a:
+        return {"status":"ERROR","message":"Очередь сожрала Скворцова"}
+    try:
+        mem = await QueueMember.objects.aget(queue_id=queue_id, user_id=user_id)
+        return {"status":"OK"}
+    except Exception as b:
+        return {"status":"ERROR","message":"Тебя выкинули, либо лох, либо хорош"}
