@@ -900,7 +900,7 @@ async def queue_return(user_id, messageID):
     r = await bot.edit_message_text(text=_dict["message"], chat_id=user_id,
                                     message_id=messageID, parse_mode='MarkdownV2')
     if status!="OK":
-        await call.message.answer(_dict["message"])
+        await bot.edit_message_text(chat_id=user_id, message_id=messageID, text=_dict["message"])
         uilder = InlineKeyboardBuilder()
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID,
                                             reply_markup=uilder.as_markup())
