@@ -169,13 +169,18 @@ async def get_queue_link(queue_id: int, bot: Bot):
     # return "https://t.me/{}?start=queue_add{}".format(bot_name, encrypt(queue_id))
     return await create_start_link(bot, str(queue_id), encode=True)
 
-async def check_user_in_queue(user_id, queue_id):
-    try:
-        queue = await Queue.objects.aget(pk=queue_id)
-    except Exception as a:
-        return {"status":"ERROR","message":"Очередь сожрала Скворцова"}
-    try:
-        mem = await QueueMember.objects.aget(queue_id=queue_id, user_id=user_id)
-        return {"status":"OK"}
-    except Exception as b:
-        return {"status":"ERROR","message":"Тебя выкинули, либо лох, либо хорош"}
+
+
+async def get_stats():
+    user_count = await TelegramUser.objects.acount()
+    queue_count = await Queue.objects.acount()
+    deadline_count = await Deadline.objects.acount()
+    group_count = await TelegramGroup.objects.acount()
+
+    res_string = ""
+    res_string += f"Количество пользователей: {user_count}\n"
+    res_string += f"Количество групп: {group_count}\n"
+    res_string += f"Количество созданных очередей: {queue_count}\n"
+    res_string += f"Количество созданных дедлайнов: {deadline_count}\n"
+
+    return res_string

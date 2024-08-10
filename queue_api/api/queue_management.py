@@ -199,3 +199,15 @@ def print_queue_message(text, date, notif_date):
     return "Очередь {} будет создана через {}.".format(text, date) + \
             (" За {} до этого будет отправлено напоминание".format(notif_date)
              if notif_date != "" else "")
+
+
+async def check_user_in_queue(user_id, queue_id):
+    try:
+        queue = await Queue.objects.aget(pk=queue_id)
+    except Exception as a:
+        return {"status":"ERROR","message":"Очередь сожрала Скворцова"}
+    try:
+        mem = await QueueMember.objects.aget(queue_id=queue_id, user_id=user_id)
+        return {"status":"OK"}
+    except Exception as b:
+        return {"status":"ERROR","message":"Тебя выкинули, либо лох, либо хорош"}

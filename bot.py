@@ -293,6 +293,7 @@ async def cmd_startgroup(message: types.Message) -> None:
                 "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
+@dp.message(CommandStart())
 @dp.message(CommandStart(deep_link=True))
 async def cmd_start(message: types.Message, command: CommandObject) -> None:
     if message.chat.type == "private":
@@ -318,6 +319,12 @@ async def cmd_start(message: types.Message, command: CommandObject) -> None:
                 reply_markup=builder_add.as_markup())
     elif message.chat.type == "supergroup":
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+
+
+@dp.message(Command('stats'))
+async def command_stats(message: types.Message) -> None:
+    if message.chat.type == "private":
+        await message.answer(await api.get_stats())
 
 
 @dp.message(Command("change_tz"))
