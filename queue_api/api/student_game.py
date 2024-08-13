@@ -23,10 +23,10 @@ async def change_rating(user_id: int, group_id: int):
     student_group, _ = await StudentGroup.objects.aget_or_create(group_id=group_id)
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
-    if already_played(timezone.now(), student.date):
-        return f"Пары сегодня закончились, приходите завтра"
     if is_created:
         return f"Ну поживи как-нибудь на 100 рублей в месяц, авось не сдохнешь с голоду"
+    if already_played(timezone.now(), student.date):
+        return f"Пары сегодня закончились, приходите завтра"
     else:
         mu, sigma = 0, DAY_MAX / 3 - 1
         delta = norm_distr(mu, sigma)
