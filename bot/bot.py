@@ -24,6 +24,7 @@ from aiogram.utils.deep_linking import decode_payload
 from emoji import emojize
 from .student_game import router as student_router
 from .text_handling import router as echo_router
+from .states import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,39 +53,6 @@ months = {
     11: ["Ноябрь", 30],
     12: ["Декабрь", 31]
 }
-
-
-class Event(StatesGroup):
-    group_id = State()
-    text = State()
-    hm = State()
-    sec = State()
-    swap = State()
-    tz = State()
-    event_type = State()
-    set_main_admin = State()
-    event_message_id = State()
-
-
-class Deadline(StatesGroup):
-    renameDeadline = State()
-    deadline_roots = State()
-
-
-class Calendar(StatesGroup):
-    year = State()
-    month = State()
-    day = State()
-    RemoveMessageyear = State()
-    RemoveMessagemonth = State()
-    RemoveMessageday = State()
-
-
-class Queue(StatesGroup):
-    renameQueue = State()
-    deleteQueueMember = State()
-
-
 
 
 class ReturnToQueueList(CallbackData, prefix="return"):

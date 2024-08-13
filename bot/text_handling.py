@@ -4,10 +4,10 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.bot import Event, short_cut, bot, send_swap_request, putInDb, Deadline, deadline_list_return, Queue, \
-    queue_return
+from bot.bot import short_cut, bot, send_swap_request, putInDb, deadline_list_return, queue_return
 from queue_api import api
 from aiogram.dispatcher.router import Router
+from .states import *
 
 
 router = Router()
