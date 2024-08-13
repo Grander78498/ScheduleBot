@@ -25,6 +25,8 @@ from emoji import emojize
 from .student_game import router as student_router
 from .text_handling import router as echo_router
 from .states import *
+from .callbacks import *
+from .utils import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,144 +57,6 @@ months = {
 }
 
 
-class ReturnToQueueList(CallbackData, prefix="return"):
-    messageID: int
-
-
-class YearCallback(CallbackData, prefix="year"):
-    year: int
-
-
-class MonthCallback(CallbackData, prefix="month"):
-    month: int
-
-
-class DayCallback(CallbackData, prefix="day"):
-    day: int
-
-
-class DeleteFirstQueueCallback(CallbackData, prefix="delete_first"):
-    queueID: int
-
-
-class GroupSelectCallback(CallbackData, prefix="selectGroup"):
-    groupID: int
-    is_admin: bool
-
-
-class QueueIDCallback(CallbackData, prefix="queueID"):
-    queueID: int
-
-
-class RemoveMyself(CallbackData, prefix="RemoveMyself"):
-    queueID: int
-
-
-class FindMyself(CallbackData, prefix="FindMyself"):
-    queueID: int
-
-
-class RemoveSwapRequest(CallbackData, prefix="Rsq"):
-    first_user_id: int
-    second_user_id: int
-    first_m_id: int
-    second_m_id: int
-    queue_id: int
-
-
-class AdminQueueSelectCallback(CallbackData, prefix="aqs"):
-    queueID: int
-    delete_message_id: int
-    queueName: str
-
-class SimpleQueueSelectCallback(CallbackData, prefix="sqs"):
-    queueID: int
-    delete_message_id: int
-    queueName: str
-
-class QueueSelectForSwapCallback(CallbackData, prefix="qss"):
-    queueID: int
-    queueName: str
-
-
-class DeleteQueueCallback(CallbackData, prefix="DeleteQueue"):
-    queueID: int
-    messageID: int
-
-
-class DeleteQueueMemberCallback(CallbackData, prefix="DeleteQueueMember"):
-    messageID: int
-    queueID: int
-
-
-class RenameQueueCallback(CallbackData, prefix="RenameQueue"):
-    queueID: int
-    messageID: int
-
-
-class SwapCallback(CallbackData, prefix="sp"):
-    message_type: str
-    first_user_id: int
-    first_tg_user_id: int
-    queueId: int
-    second_user_id: int
-    message2_id: int
-    message1_id: int
-
-class DeadLineAcceptCallback(CallbackData, prefix="da"):
-    deadline_id: int
-    user_id: int
-    message_id: int
-    solution: bool
-
-class CanbanDesk(CallbackData, prefix="cd"):
-    deadline_status_id: int
-    is_done: bool
-    message_id: int
-
-class DeadStatus(CallbackData, prefix="ds"):
-    deadline_status_id: int
-    is_done: bool
-    message_id: int
-    d_type: str
-    del_mes: int
-
-
-class EditDeadline(CallbackData, prefix="ed"):
-    deadline_id: int
-    message_id: int
-
-
-class QueueSwapPagination(CallbackData, prefix="qsp"):
-    offset: int
-    message_id: int
-
-class QueuePagination(CallbackData, prefix="qp"):
-    offset: int
-    message_id: int
-
-
-class DeadPagination(CallbackData, prefix="dp"):
-    offset: int
-    message_id: int
-
-
-class EditDeadPagination(CallbackData, prefix="edp"):
-    offset: int
-    message_id: int
-
-
-class RenameDeadlineCallback(CallbackData, prefix="rdc"):
-    deadline_id: int
-
-
-class DeleteDeadlineCallback(CallbackData, prefix="ddc"):
-    deadline_id: int
-    messageID: int
-
-
-class ReturnToDeadlineList(CallbackData, prefix="rtl"):
-    messageID: int
 
 
 @dp.message(Command("queue"))
@@ -324,47 +188,6 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
         await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
-async def send_swap_request(message: types.Message, second_member_id: str, from_user_id, state: FSMContext):
-    res = (await state.get_data())["swap"]
-    queueID = res["queueID"]
-    await bot.delete_message(chat_id=from_user_id, message_id=res["first_m"])
-    await bot.delete_message(chat_id=from_user_id, message_id=res["second_m"])
-    await state.clear()
-    result = await api.get_user_id(await api.get_queue_member_id(queueID, from_user_id), second_member_id)
-    if result["status"] != "OK":
-        await message.answer(result["message"])
-    else:
-        mess_lichka = await message.answer(result["message"])
-        try:
-            mes = await bot.send_message(chat_id=result["user_id"],
-                                         text="{} (место - {}) отправил(-а) запрос на обмен местами в очереди {}. Ваше текущее место - {}".format(
-                                             result['first_name'], result['first_position'], result['queue_name'],
-                                             result['second_position']))
-            builder = InlineKeyboardBuilder()
-            builder.button(text="Отклонить", callback_data=SwapCallback(message_type="Deny",
-                                                                        first_user_id=await api.get_queue_member_id(
-                                                                            queueID, from_user_id),
-                                                                        first_tg_user_id=from_user_id, queueId=queueID,
-                                                                        second_user_id=int(second_member_id),
-                                                                        message2_id=mes.message_id,
-                                                                        message1_id=mess_lichka.message_id))
-            builder.button(text="Принять", callback_data=SwapCallback(message_type="Accept",
-                                                                      first_user_id=await api.get_queue_member_id(
-                                                                          queueID, from_user_id),
-                                                                      first_tg_user_id=from_user_id, queueId=queueID,
-                                                                      second_user_id=int(second_member_id),
-                                                                      message2_id=mes.message_id,
-                                                                      message1_id=mess_lichka.message_id))
-            await bot.edit_message_reply_markup(chat_id=result["user_id"], message_id=mes.message_id,
-                                                reply_markup=builder.as_markup())
-            await api.handle_request(await api.get_queue_member_id(queueID, from_user_id), second_member_id,
-                                     mess_lichka.message_id, mes.message_id)
-            await api.add_request_timer(from_user_id, result["user_id"], mess_lichka.message_id, mes.message_id,
-                                        queueID)
-
-        except aiogram.exceptions.TelegramForbiddenError:
-            await message.answer(
-                "Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
 
 
 async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
@@ -603,41 +426,16 @@ async def delete_deadline(call: CallbackQuery, callback_data: DeleteDeadlineCall
     mes = await call.message.answer("Дед был удалён")
     message_id, group_id = await api.delete_deadline_by_status(callback_data.deadline_id)
     await bot.delete_message(chat_id=group_id, message_id=message_id)
-    await deadline_list_return(call.from_user.id, callback_data.messageID, call.message)
+    await deadline_list_return(call.from_user.id, callback_data.messageID, bot)
     await asyncio.sleep(5)
     await bot.delete_message(chat_id=call.from_user.id, message_id=mes.message_id)
     await call.answer()
 
-async def deadline_list_return(user_id, messageID, message: types.Message):
-    res = await api.get_deadlines(user_id, 0, True)
-    builder = InlineKeyboardBuilder()
-    r = await bot.edit_message_text(text=res["message"], chat_id=user_id,
-                                    message_id=messageID)
-    if res["status"]!="OK":
-        builder.button(text="Создать напоминание", callback_data="add_deadline")
-        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
-        builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
-        builder.adjust(1)
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID, reply_markup=builder.as_markup())
-    else:
-        has_next = res['has_next']
-        len_d = 0
-        for dead_id, _ in res["deadline_list"]:
-            builder.button(text=("{}".format(len_d+1)), callback_data=EditDeadline(deadline_id=dead_id, message_id=r.message_id))
-            len_d+=1
-        buttons = [5 for _ in range(len_d//5)]
-        if len_d%5!=0:
-            buttons.append(len_d%5)
-        if has_next:
-            builder.button(text=emojize(":right_arrow:"), callback_data=EditDeadPagination(offset = api.OFFSET, message_id=r.message_id))
-            buttons.append(1)
-        builder.adjust(*buttons)
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=r.message_id, reply_markup=builder.as_markup())
 
 
 @dp.callback_query(ReturnToDeadlineList.filter(F.messageID != 0))
 async def return_deadline_list(call: CallbackQuery, callback_data: ReturnToDeadlineList):
-    await deadline_list_return(call.from_user.id, callback_data.messageID, call.message)
+    await deadline_list_return(call.from_user.id, callback_data.messageID, bot)
     await call.answer()
 
 
@@ -882,41 +680,11 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
 
 
 
-async def queue_return(user_id, messageID):
-    _dict = await api.get_all_queues(user_id, 0, False)
-    status = _dict["status"]
-    r = await bot.edit_message_text(text=_dict["message"], chat_id=user_id,
-                                    message_id=messageID, parse_mode='MarkdownV2')
-    if status!="OK":
-        await bot.edit_message_text(chat_id=user_id, message_id=messageID, text=_dict["message"])
-        uilder = InlineKeyboardBuilder()
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=messageID,
-                                            reply_markup=uilder.as_markup())
-    else:
-        lenq = len(_dict["data"])
-        has_next = _dict["has_next"]
-        queueList = [queue["id"] for queue in _dict["data"]]
-        names = [queue["name"] for queue in _dict["data"]]
-        is_creators = [queue["is_creator"] for queue in _dict["data"]]
-        st = _dict["message"]
-        builder = InlineKeyboardBuilder()
-        for i in range(lenq):
-            builder.button(text="{}".format(i + 1),
-                           callback_data= (AdminQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i])) if is_creators[i] else SimpleQueueSelectCallback(queueID=queueList[i], delete_message_id=r.message_id, queueName=names[i]))
-        buttons = [5 for _ in range(lenq//5)]
-        if lenq%5!=0:
-            buttons.append(lenq%5)
-        if has_next:
-            builder.button(text=emojize(":right_arrow:"), callback_data=QueuePagination(offset = api.OFFSET, message_id=r.message_id))
-            buttons.append(1)
-        builder.adjust(*buttons)
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=r.message_id,
-                                            reply_markup=builder.as_markup())
 
 
 @dp.callback_query(ReturnToQueueList.filter(F.messageID != 0))
 async def printQueue_returned(call: CallbackQuery, callback_data: ReturnToQueueList, state: FSMContext):
-    await queue_return(call.from_user.id, callback_data.messageID)
+    await queue_return(call.from_user.id, callback_data.messageID, bot)
     await call.answer()
 
 
@@ -942,7 +710,7 @@ async def SimpleQueueChosen(call: CallbackQuery, callback_data: SimpleQueueSelec
             await call.answer()
     else:
         await call.answer(res["message"])
-        await queue_return(call.from_user.id, call.message.message_id)
+        await queue_return(call.from_user.id, call.message.message_id, bot)
 
 
 
@@ -975,7 +743,7 @@ async def remove_first(call: CallbackQuery, callback_data: DeleteFirstQueueCallb
         await call.answer("Данная очередь пуста")
     else:
         await call.answer("Первый удалён")
-    await queue_return(call.from_user.id, call.message.message_id)
+    await queue_return(call.from_user.id, call.message.message_id, bot)
     # Здесь был render queue
 
 
@@ -999,7 +767,7 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 
 @dp.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    await queue_return(call.from_user.id, callback_data.messageID)
+    await queue_return(call.from_user.id, callback_data.messageID, bot)
     chat_list, message_list = await api.delete_queue(callback_data.queueID)
     for chat_id, message_id in zip(chat_list, message_list):
         try:
@@ -1116,57 +884,6 @@ async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMConte
     await call.answer()
 
 
-async def putInDb(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    try:
-        await state.clear()
-        if "RemoveMessageyear" in data:
-            del data["RemoveMessageyear"]
-        if "RemoveMessagemonth" in data:
-            del data["RemoveMessagemonth"]
-        if "RemoveMessageday" in data:
-            del data["RemoveMessageday"]
-        if "renameQueue" in data:
-            del data["renameQueue"]
-        data["creator_id"] = message.chat.id
-    except Exception:
-        print("Error")
-    builder = InlineKeyboardBuilder()
-    if data["event_type"] == EventType.QUEUE:
-        thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
-        builder.button(text="Создать очередь", callback_data="add_queue")
-        builder.button(text="Вывести существующие очереди", callback_data="print_queue")
-        builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-        builder.adjust(1)
-        await message.answer("Очередь была создана", reply_markup=builder.as_markup())
-        mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                     text=api.print_queue_message(data['text'], date, notif_date))
-        await api.update_message_id(queue_id, mes.message_id, data['group_id'])
-        await api.create_queue_tasks(queue_id, data["group_id"])
-    else:
-        builder.button(text="Создать напоминание", callback_data="add_deadline")
-        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
-        builder.adjust(1)
-        thread_id, date, deadline_id, notif_date = await api.create_queue_or_deadline(data)
-        if data["deadline_roots"]:
-            await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
-            mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                         text=api.print_deadline_message(data['text'], date))
-            await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
-            await api.create_queue_tasks(deadline_id, data["group_id"])
-        else:
-            res = await api.create_deadline_request(message.from_user.id, data['group_id'])
-            if res['status'] == 'ERROR':
-                await message.answer(res['message'])
-            else:
-                await message.answer("Так как вы не являетесь админом этой группы, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
-                admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
-                builder_admin = InlineKeyboardBuilder()
-                m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
-                builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
-                builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
-                await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
-                                                    reply_markup=builder_admin.as_markup())
 
 
 
@@ -1194,7 +911,7 @@ async def now_time(call: CallbackQuery, state: FSMContext):
     await state.update_data(day=now.day)
     await state.update_data(hm="{:02d}:{:02d}".format(now.hour, now.minute))
     await state.update_data(sec=now.second)
-    await putInDb(call.message, state)
+    await putInDb(call.message, state, bot)
     await call.answer()
 
 
@@ -1205,7 +922,7 @@ async def next_hour(call: CallbackQuery, state: FSMContext):
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
     await state.update_data(hm="{:02d}:{:02d}".format(now.hour, now.minute))
-    await putInDb(call.message, state)
+    await putInDb(call.message, state, bot)
     await call.answer()
 
 
@@ -1275,23 +992,6 @@ async def one_month(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-async def short_cut(message: Message, state: FSMContext):
-    builder = InlineKeyboardBuilder()
-    data = await state.get_data()
-    if data["event_type"] == EventType.QUEUE:
-        builder.button(text="Сейчас", callback_data="now")
-        builder.button(text="Через час", callback_data="one_hour")
-        builder.button(text="Сегодня", callback_data="today")
-        builder.button(text="Завтра", callback_data="tomorrow")
-        builder.button(text="Задать самостоятельно", callback_data="custom")
-    elif data["event_type"] == EventType.DEADLINE:
-        builder.button(text="Через неделю", callback_data="week")
-        builder.button(text="Через 2 недели", callback_data="2week")
-        builder.button(text="Через месяц", callback_data="one_month")
-        builder.button(text="Через полгода", callback_data="half_year")
-        builder.button(text="Задать самостоятельно", callback_data="custom")
-    builder.adjust(2)
-    await message.answer("Выберите время", reply_markup=builder.as_markup())
 
 
 

@@ -1,10 +1,10 @@
 import asyncio
 
-from aiogram import F
+from aiogram import F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.bot import short_cut, bot, send_swap_request, putInDb, deadline_list_return, queue_return
+from bot.utils import short_cut, send_swap_request, putInDb, deadline_list_return, queue_return
 from queue_api import api
 from aiogram.dispatcher.router import Router
 from .states import *
@@ -13,7 +13,7 @@ from .states import *
 router = Router()
 
 @router.message(F.text)
-async def echo(message: Message, state: FSMContext) -> None:
+async def echo(message: Message, state: FSMContext, bot: Bot) -> None:
     st = await state.get_state()
     if message.chat.type == "private":
         if st == Event.text:
@@ -27,7 +27,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == Event.swap:
-            await send_swap_request(message, message.text, message.chat.id, state)
+            await send_swap_request(message, message.text, message.chat.id, state, bot)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         elif st == Event.hm:
             data = await state.get_data()
@@ -39,7 +39,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await message.answer("Очередь задана слишком рано, можно задавать минимум через 2 часа")
                 case _:
                     await state.update_data(hm=message.text)
-                    await putInDb(message, state)
+                    await putInDb(message, state, bot)
         elif st == Event.tz:
             res = await api.change_tz(message.chat.id, message.text)
             if res["status"] == "OK":
@@ -61,7 +61,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await state.clear()
                     q = await message.answer("Название было изменено")
                     message_id, text, chat_id = res['data']
-                    await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], message)
+                    await deadline_list_return(message.chat.id, data['renameDeadline']["edit_message_id"], bot)
                     await bot.delete_message(chat_id=message.chat.id, message_id=data['renameDeadline']["message_id"])
                     await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
                 await asyncio.sleep(5)
@@ -78,7 +78,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 data = await state.get_data()
                 await state.clear()
                 await api.rename_queue(data["renameQueue"]["queueID"], message.text)
-                await queue_return(message.chat.id, data["renameQueue"]["messageID"])
+                await queue_return(message.chat.id, data["renameQueue"]["messageID"], bot)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data["renameQueue"]["del_message"])
                 # Здесь был render queue
                 #                builder = InlineKeyboardBuilder()
@@ -120,7 +120,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                     await bot.delete_message(chat_id=message.chat.id,
                                              message_id=data["deleteQueueMember"]["please_message"])
                     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                    await queue_return(message.chat.id, data["deleteQueueMember"]["messageID"])
+                    await queue_return(message.chat.id, data["deleteQueueMember"]["messageID"], bot)
                     q = await message.answer("Участник был успешно удалён")
                     await asyncio.sleep(5)
                     await bot.delete_message(chat_id=message.chat.id, message_id=q.message_id)
