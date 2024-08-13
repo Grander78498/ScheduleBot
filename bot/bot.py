@@ -425,7 +425,10 @@ async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCall
 async def delete_deadline(call: CallbackQuery, callback_data: DeleteDeadlineCallback):
     mes = await call.message.answer("Дед был удалён")
     message_id, group_id = await api.delete_deadline_by_status(callback_data.deadline_id)
-    await bot.edit_message_text(chat_id=group_id, message_id=message_id, text='Дедлайн был удалён')
+    try:
+        await bot.delete_message(chat_id=group_id, message_id=message_id)
+    except Exception:
+        await bot.edit_message_text(chat_id=group_id, message_id=message_id, text='Дедлайн был удалён')
     await deadline_list_return(call.from_user.id, callback_data.messageID, bot)
     await asyncio.sleep(5)
     await bot.delete_message(chat_id=call.from_user.id, message_id=mes.message_id)
@@ -773,7 +776,6 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
         try:
             await bot.delete_message(chat_id=chat_id, message_id=message_id)
         except Exception:
-            await call.answer("Очередь перестала быть активной, но удалить сообщение не удалось")
             await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text='Очередь больше не активна')
     await call.answer("Очередь удалена")
 
