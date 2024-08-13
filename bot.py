@@ -20,7 +20,7 @@ from aiogram.filters.callback_data import CallbackData
 from config import config
 from queue_api.api import EventType
 from aiogram.utils.deep_linking import decode_payload
-
+    
 from emoji import emojize
 
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +33,6 @@ async def get_bot_name():
 
 dp = Dispatcher()
 
-voted = {}
 
 months = {
     1: ["Январь", 31],
@@ -222,7 +221,7 @@ async def print_info_queue(message: types.Message):
     builder.button(text="Вывести существующие очереди", callback_data="print_queue")
     builder.button(text="Запросить перемещение в очереди", callback_data="swap")
     builder.adjust(1)
-    await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+    await message.answer("Здравствуйте, вам доступен следующий функционал по очередям\n", reply_markup=builder.as_markup())
 
 @dp.message(Command("set_main_admin"))
 async def set_main_admin(message: types.Message, state: FSMContext):
@@ -249,7 +248,7 @@ async def print_info_deadline(message: types.Message):
     builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
     builder.button(text="Управление напоминаниями", callback_data="edit_deadline")
     builder.adjust(1)
-    await message.answer("Здравствуйте, вам доступен следующий функционал\n", reply_markup=builder.as_markup())
+    await message.answer("Здравствуйте, вам доступен следующий функционал по дедлайнам\n", reply_markup=builder.as_markup())
 
 
 @dp.message(Command("change_topic"))
