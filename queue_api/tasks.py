@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 from queue_api.api import print_date_diff
 from telethon import TelegramClient
-import bot
+from bot import send_ready, send_notification, render_queue, edit_request_message
 import asyncio
 from .models import *
 from config import config
@@ -14,7 +14,7 @@ celery_event_loop = asyncio.new_event_loop()
 def task_send_ready(event_id):
     event = Event.objects.get(pk=event_id)
     group = TelegramGroup.objects.get(pk=event.group_id)
-    celery_event_loop.run_until_complete(bot.send_ready(event.id, group.thread_id, group.tg_id))
+    celery_event_loop.run_until_complete(send_ready(event.id, group.thread_id, group.tg_id))
 
 
 @shared_task(name="send_notif")
@@ -32,18 +32,18 @@ def task_send_notif(event_id):
             f"""НАПОМИНАНИЕ!!!
                 До дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}
                 """
-    celery_event_loop.run_until_complete(bot.send_notification(event.id, group.thread_id, group.tg_id, message))
+    celery_event_loop.run_until_complete(send_notification(event.id, group.thread_id, group.tg_id, message))
 
 
 @shared_task(name="render_queue")
 def task_render_queue(queue_id, private):
     Queue.objects.filter(pk=queue_id).update(is_rendering=False)
-    celery_event_loop.run_until_complete(bot.render_queue(queue_id, private))
+    celery_event_loop.run_until_complete(render_queue(queue_id, private))
 
 
 @shared_task(name="swap_delete")
 def task_swap_delete(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
-    celery_event_loop.run_until_complete(bot.edit_request_message(first_id, second_id,
+    celery_event_loop.run_until_complete(edit_request_message(first_id, second_id,
                                                                   message1_id, message2_id, queue_id))
 
 
