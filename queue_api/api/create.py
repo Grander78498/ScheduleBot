@@ -7,9 +7,10 @@ from .imports import *
 from .utils import print_date_diff, EventType
 
 
-async def add_admin(group_id: int, admins: list[int], names: list[str], group_name: str, thread_id: int):
+async def add_admin(group_id: int, admins: list[int], bot_id: int, names: list[str], group_name: str, thread_id: int):
     for admin, name in zip(admins, names):
-        await add_user_to_group(group_id, admin, name, True, group_name=group_name, thread_id=thread_id)
+        if admin != bot_id:
+            await add_user_to_group(group_id, admin, name, True, group_name=group_name, thread_id=thread_id)
 
 
 async def add_user_to_group(group_id: int,
