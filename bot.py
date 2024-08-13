@@ -1520,7 +1520,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
                 pass
             await call.answer()
         else:
-            await call.answer(url=await api.get_queue_link(callback_data.queueID, await get_bot_name()))
+            await call.answer(url=await api.get_queue_link(callback_data.queueID, bot))
 
 
 @dp.callback_query(RemoveMyself.filter(F.queueID != 0))
