@@ -20,7 +20,7 @@ from aiogram.filters.callback_data import CallbackData
 from config import config
 from queue_api.api import EventType
 from aiogram.utils.deep_linking import decode_payload
-    
+
 from emoji import emojize
 from .student_game import router as student_router
 from .text_handling import router as echo_router
@@ -32,9 +32,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 bot = Bot(token=config.bot_token.get_secret_value())
 
-
-async def get_bot_name():
-    return (await bot.get_me()).username
 
 dp = Dispatcher()
 dp.include_router(student_router)
@@ -55,8 +52,6 @@ months = {
     11: ["Ноябрь", 30],
     12: ["Декабрь", 31]
 }
-
-
 
 
 @dp.message(Command("queue"))
@@ -103,38 +98,13 @@ async def change_topic(message: types.Message):
     if ok:
         await api.change_topic(message.chat.id, message.message_thread_id)
         await message.answer(text="Тема изменена успешно")
-        await cmd_startgroup(message)
+        await cmd_startgroup(message, bot)
     else:
         try:
             await bot.send_message(text="Пошёл нахуй пидорас уёбище блядское хули лезешь не туда???",
                                    chat_id=message.from_user.id)
         except aiogram.exceptions.TelegramForbiddenError:
             pass
-
-
-async def cmd_startgroup(message: types.Message) -> None:
-    if message.chat.type == "supergroup":
-        chat_admins = await bot.get_chat_administrators(message.chat.id)
-        d = []
-        names = []
-        for admin in chat_admins:
-            userId = admin.user.id
-            name = admin.user.full_name
-            d.append(userId)
-            names.append(name)
-        await api.add_admin(message.chat.id, d, names, message.chat.title, message.message_thread_id)
-        if not settings.DEBUG:
-            from queue_api.tasks import task_get_users
-            result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
-            await message.answer(
-                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
-            users = result.get()
-            for user in users:
-                await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
-                                            False, message.chat.title, message.message_thread_id)
-        else:
-            await message.answer(
-                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
 @dp.message(CommandStart())
@@ -155,7 +125,7 @@ async def cmd_start(message: types.Message, command: CommandObject) -> None:
         elif len(str(message.text).split()) == 1:
             builder_add = InlineKeyboardBuilder()
             builder_add.button(text="Добавить бота в группу",
-                               url="https://t.me/{}?startgroup={}&admin=pin_messages+delete_messages".format(await get_bot_name(), message.chat.id))
+                               url="https://t.me/{}?startgroup={}&admin=pin_messages+delete_messages".format(await get_bot_name(bot), message.chat.id))
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer(
@@ -188,34 +158,11 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
         await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
-
-
-async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Удалить запрос",
-                   callback_data=RemoveSwapRequest(first_m_id=message1_id, second_m_id=message2_id,
-                                                   first_user_id=first_id, second_user_id=second_id, queue_id=queue_id))
-    try:
-        await bot.edit_message_reply_markup(chat_id=first_id, message_id=message1_id,
-                                            reply_markup=builder.as_markup())
-    except Exception as ex:
-        print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", ex)
-
-
 @dp.callback_query(RemoveSwapRequest.filter(F.first_m_id != 0))
 async def remove_swap(call: CallbackQuery, callback_data: RemoveSwapRequest):
     await api.remove_request(callback_data.first_user_id, callback_data.second_user_id, callback_data.queue_id)
     await delete_request_messages(callback_data.first_m_id, callback_data.second_m_id, callback_data.first_user_id,
-                                  callback_data.second_user_id)
-
-
-async def delete_request_messages(first_message_id: int, second_message_id: int, chat1_id, chat2_id):
-    try:
-        await bot.delete_message(chat_id=chat1_id, message_id=first_message_id)
-        await bot.delete_message(chat_id=chat2_id, message_id=second_message_id)
-    except:
-        await bot.send_message(chat_id=chat1_id, text="You are gay")
-        await bot.send_message(chat_id=chat2_id, text="You are gay")
+                                  callback_data.second_user_id, bot)
 
 
 @dp.callback_query(SwapCallback.filter(F.queueId != 0))
@@ -230,11 +177,11 @@ async def swap_result(call: CallbackQuery, callback_data: SwapCallback, state: F
         await bot.send_message(chat_id=callback_data.first_tg_user_id,
                                text="Ваш запрос был удовлетворён. Вы поменяны в очереди")
     await delete_request_messages(callback_data.message1_id, callback_data.message2_id, callback_data.first_tg_user_id,
-                                  call.from_user.id)
+                                  call.from_user.id, bot)
     deletable = await api.remove_all_in_requests(current_member_id)
     for elem in deletable:
         await delete_request_messages(elem["first_message_id"], elem["second_message_id"], elem["first_member"],
-                                      call.from_user.id)
+                                      call.from_user.id, bot)
         await bot.send_message(chat_id=elem["first_member"], text="Ваш запрос был отклонён")
     await call.answer()
 
@@ -401,7 +348,7 @@ async def editDeadline(call: CallbackQuery):
 @dp.callback_query(EditDeadline.filter(F.deadline_id != 0))
 async def refactor_deadline(call: CallbackQuery, callback_data: EditDeadline):
     deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_id)
-    builder = InlineKeyboardBuilder() 
+    builder = InlineKeyboardBuilder()
     builder.button(text="Изменить название дедлайна", callback_data=RenameDeadlineCallback(deadline_id=callback_data.deadline_id))
     builder.button(text="Удалить дедлайн",
                    callback_data=DeleteDeadlineCallback(deadline_id=callback_data.deadline_id, messageID=call.message.message_id))
@@ -528,33 +475,6 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
             await call.answer()
 
 
-async def update_deadline_info(res, user_id, message_id):
-    builder = InlineKeyboardBuilder()
-    if res["status"]!="OK":
-        builder.button(text="Создать напоминание", callback_data="add_deadline")
-        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
-        builder.adjust(1)
-        await bot.edit_message_text(chat_id=user_id, text=emojize(res["message"]), message_id=message_id)
-        await bot.edit_message_reply_markup(chat_id=user_id, message_id=message_id, reply_markup=builder.as_markup())
-    else:
-        has_next = res['has_next']
-        await bot.edit_message_text(chat_id=user_id,text=emojize(res["message"]), message_id=message_id)
-        len_d = 0
-        for dead_id, is_done in res["deadline_list"]:
-            builder.button(text=("{}".format(len_d + 1)), callback_data=CanbanDesk(deadline_status_id=dead_id, is_done=is_done, message_id=message_id))
-            len_d += 1
-        buttons = [5 for _ in range(len_d // 5)]
-        if len_d % 5 != 0:
-            buttons.append(len_d % 5)
-        if has_next:
-            builder.button(text=emojize(":right_arrow:"), callback_data=DeadPagination(offset=api.OFFSET, message_id=message_id))
-            buttons.append(1)
-        builder.adjust(*buttons)
-        try:
-            await bot.edit_message_reply_markup(chat_id=user_id, message_id=message_id, reply_markup=builder.as_markup())
-        except Exception as e:
-            print(e)
-
 @dp.callback_query(CanbanDesk.filter(F.deadline_status_id != 0))
 async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     is_done = callback_data.is_done
@@ -562,7 +482,7 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     if not check:
         await call.answer("О нет, дедлайн был магическим образом удалён, как же так")
         res = await api.get_deadlines(call.from_user.id, 0, False)
-        await update_deadline_info(res, call.from_user.id, callback_data.message_id)
+        await update_deadline_info(res, call.from_user.id, callback_data.message_id, bot)
     else:
         deadline_name, group_name = await api.get_deadline_name(callback_data.deadline_status_id)
         builder = InlineKeyboardBuilder()
@@ -588,10 +508,10 @@ async def deadline_status_change(call: CallbackQuery, callback_data: DeadStatus)
         await api.update_done_status(callback_data.deadline_status_id)
     await bot.delete_message(chat_id=call.from_user.id, message_id=callback_data.del_mes)
     res = await api.get_deadlines(call.from_user.id, 0, False)
-    await update_deadline_info(res, call.from_user.id, callback_data.message_id)
-    await call.answer()        
+    await update_deadline_info(res, call.from_user.id, callback_data.message_id, bot)
+    await call.answer()
 
-    
+
 
 @dp.callback_query(QueueSelectForSwapCallback.filter(F.queueID != 0))
 async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallback, state: FSMContext):
@@ -1022,48 +942,6 @@ async def print_mes(message: Message, state: FSMContext):
                 await state.clear()
 
 
-async def send_ready(event_id, thread_id, group_id):
-    builder = InlineKeyboardBuilder()
-    queue_message_id = await api.get_message_id(event_id, group_id)
-    print(group_id, queue_message_id, 'AAAAAAAAAAAAAAAAAAAAAA')
-    await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
-    event_type = await api.get_event_type_by_id(event_id)
-    if event_type == EventType.QUEUE:
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=event_id))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=event_id))
-        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
-        builder.adjust(1)
-        _, message, _ = await api.print_queue(event_id, False, bot)
-    else:
-        message = await api.print_deadline(event_id)
-        await api.delete_deadline(event_id)
-    mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
-                                  reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    await api.update_message_id(event_id, mess.message_id, group_id)
-
-
-async def send_notification(queue_id, thread_id, group_id, message):
-    mess_id = await api.get_message_id(queue_id, group_id)
-    await bot.delete_message(chat_id=group_id, message_id=mess_id)
-    a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
-    await api.update_message_id(queue_id, a.message_id, group_id)
-
-
-async def render_queue(queue_id: int, private: bool):
-    try:
-        group_id, queue, message_list = await api.print_queue(queue_id, private, bot)
-        builder = InlineKeyboardBuilder()
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
-        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
-        builder.adjust(1)
-        for queue_message_id in message_list:
-            await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
-                                        reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    except Exception as ex:
-        print(ex)
-
-
 @dp.callback_query(QueueIDCallback.filter(F.queueID != 0))
 async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
     client = await api.add_user_to_queue(callback_data.queueID, call.from_user.id, call.from_user.full_name)
@@ -1105,7 +983,7 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
 async def bot_add_to_group(message: types.Message):
     if (await bot.get_me()).id == message.new_chat_member['id']:
         await api.set_main_admin(message.chat.id, message.from_user.id, message.chat.title, message.message_thread_id)
-        await cmd_startgroup(message)
+        await cmd_startgroup(message, bot)
     elif not message.new_chat_member['is_bot']:
         full_name = message.new_chat_member['first_name'] + (" " + message.new_chat_member['last_name'] if 'last_name' in message.new_chat_member else '')
         await api.add_user_to_group(message.chat.id, message.new_chat_member['id'], full_name,
