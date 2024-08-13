@@ -170,7 +170,6 @@ async def get_queue_link(queue_id: int, bot: Bot):
     return await create_start_link(bot, str(queue_id), encode=True)
 
 
-
 async def get_stats():
     user_count = await TelegramUser.objects.acount()
     queue_count = await Queue.objects.acount()

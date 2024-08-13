@@ -45,6 +45,19 @@ class GroupMember(models.Model):
     is_admin = models.BooleanField(default=False)
 
 
+class Student(models.Model):
+    group_member = models.OneToOneField('GroupMember', on_delete=models.CASCADE, primary_key=True)
+    date = models.DateTimeField(auto_now=True)
+    prev_rating = models.SmallIntegerField(default=0)
+    rating = models.SmallIntegerField(default=0)
+    scholarship = models.IntegerField(default=100)
+
+
+class StudentGroup(models.Model):
+    group = models.OneToOneField('TelegramGroup', primary_key=True, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now_add=True)
+
+
 class Queue(Event):
     is_rendering = models.BooleanField(default=False)
 

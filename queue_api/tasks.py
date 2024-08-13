@@ -1,5 +1,4 @@
 from celery import shared_task
-from asgiref.sync import async_to_sync
 from django.utils import timezone
 from queue_api.api import print_date_diff
 from telethon import TelegramClient

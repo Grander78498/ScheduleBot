@@ -22,6 +22,7 @@ from queue_api.api import EventType
 from aiogram.utils.deep_linking import decode_payload
     
 from emoji import emojize
+from .student_game import router as student_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ async def get_bot_name():
     return (await bot.get_me()).username
 
 dp = Dispatcher()
+dp.include_router(student_router)
 
 
 months = {
