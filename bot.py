@@ -50,29 +50,38 @@ months = {
 }
 
 
-class States(StatesGroup):
+class Event(StatesGroup):
     group_id = State()
-    RemoveMessageyear = State()
-    RemoveMessagemonth = State()
-    RemoveMessageday = State()
-    renameQueue = State()
-    deleteQueueMember = State()
     text = State()
-    year = State()
-    month = State()
-    day = State()
     hm = State()
     sec = State()
     swap = State()
     tz = State()
     event_type = State()
-    deadline_roots = State()
     set_main_admin = State()
     event_message_id = State()
 
 
 class Deadline(StatesGroup):
     renameDeadline = State()
+    deadline_roots = State()
+
+
+class Calendar(StatesGroup):
+    year = State()
+    month = State()
+    day = State()
+    RemoveMessageyear = State()
+    RemoveMessagemonth = State()
+    RemoveMessageday = State()
+
+
+class Queue(StatesGroup):
+    renameQueue = State()
+    deleteQueueMember = State()
+
+
+
 
 class ReturnToQueueList(CallbackData, prefix="return"):
     messageID: int
@@ -235,10 +244,10 @@ async def set_main_admin(message: types.Message, state: FSMContext):
             await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             await state.update_data(set_main_admin={"message_id":message.message_id, "status":"ERROR"})
-            await state.set_state(States.set_main_admin)
+            await state.set_state(Event.set_main_admin)
         else:
             await state.update_data(set_main_admin={"message_id":message.message_id, "status":"OK"})
-            await state.set_state(States.set_main_admin)
+            await state.set_state(Event.set_main_admin)
 
 
 @dp.message(Command("deadline"))
@@ -329,7 +338,7 @@ async def command_stats(message: types.Message) -> None:
 @dp.message(Command("change_tz"))
 async def cmd_change_tz(message: types.Message, state: FSMContext):
     await message.answer("Введите новый часовой пояс")
-    await state.set_state(States.tz)
+    await state.set_state(Event.tz)
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
@@ -818,7 +827,7 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
         _, text, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", bot)
         queue_list_message = await call.message.answer(text, parse_mode="MarkdownV2")
         simple_message = await call.message.answer("Скопируйте id пользователя из очереди и отправьте в сообщении")
-        await state.set_state(States.swap)
+        await state.set_state(Event.swap)
         res = {"queueID": callback_data.queueID, "first_m": queue_list_message.message_id,
                "second_m": simple_message.message_id}
         await state.update_data(swap=res)
@@ -838,7 +847,7 @@ async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback,
     await state.update_data(group_id=callback_data.groupID)
     await state.update_data(deadline_roots=callback_data.is_admin)
     await call.message.answer("Напишите сообщение для добавления")
-    await state.set_state(States.text)
+    await state.set_state(Event.text)
     await call.answer()
 
 
@@ -1003,7 +1012,7 @@ async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMem
     _, message, _ = await api.print_queue(callback_data.queueID, call.message.chat.type == "private", bot)
     queue_message = await call.message.answer(text=message, parse_mode='MarkdownV2')
     please_message = await call.message.answer("Введите номер удаляемого участника")
-    await state.set_state(States.deleteQueueMember)
+    await state.set_state(Queue.deleteQueueMember)
     await state.update_data(deleteQueueMember={"messageID":callback_data.messageID, "queue_message":queue_message.message_id, "please_message":please_message.message_id})
     await call.answer()
 
@@ -1011,7 +1020,7 @@ async def delete_queue_member(call: CallbackQuery, callback_data: DeleteQueueMem
 @dp.callback_query(RenameQueueCallback.filter(F.queueID != 0))
 async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, state: FSMContext):
     r = await call.message.answer("Введите новое название очереди")
-    await state.set_state(States.renameQueue)
+    await state.set_state(Queue.renameQueue)
     await state.update_data(renameQueue={"queueID":callback_data.queueID, "messageID":callback_data.messageID, "del_message":r.message_id})
     await call.answer()
 
@@ -1032,7 +1041,7 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
 async def Day(call: CallbackQuery, callback_data: DayCallback, state: FSMContext):
     if call.message.chat.type == "private":
         await state.update_data(day=callback_data.day)
-        await state.set_state(States.hm)
+        await state.set_state(Event.hm)
         await call.message.answer("Введите время в формате ЧЧ:ММ")
         await call.answer()
 
@@ -1041,7 +1050,7 @@ async def Day(call: CallbackQuery, callback_data: DayCallback, state: FSMContext
 async def Month(call: CallbackQuery, callback_data: MonthCallback, state: FSMContext):
     if call.message.chat.type == "private":
         await state.update_data(month=callback_data.month)
-        await state.set_state(States.day)
+        await state.set_state(Calendar.day)
         builder = InlineKeyboardBuilder()
         a = 1
         remove = await state.get_data()
@@ -1104,7 +1113,7 @@ async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCal
 async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMContext):
     if call.message.chat.type == "private":
         await state.update_data(year=callback_data.year)
-        await state.set_state(States.month)
+        await state.set_state(Calendar.month)
         builder = InlineKeyboardBuilder()
         a = 1
         if datetime.datetime.now().year == callback_data.year:
@@ -1201,7 +1210,7 @@ async def custom_time(call: CallbackQuery, state: FSMContext):
                    callback_data=YearCallback(year=datetime.datetime.now().year + 2))
     builder.adjust(1)
     await call.message.answer("Выберите год", reply_markup=builder.as_markup())
-    await state.set_state(States.year)
+    await state.set_state(Calendar.year)
     await call.answer()
 
 
@@ -1234,7 +1243,7 @@ async def today(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1245,7 +1254,7 @@ async def tomorrow(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1256,7 +1265,7 @@ async def week(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1267,7 +1276,7 @@ async def two_week(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1278,7 +1287,7 @@ async def one_month(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1289,7 +1298,7 @@ async def one_month(call: CallbackQuery, state: FSMContext):
     await state.update_data(year=now.year)
     await state.update_data(month=now.month)
     await state.update_data(day=now.day)
-    await state.set_state(States.hm)
+    await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
 
@@ -1318,7 +1327,7 @@ async def short_cut(message: Message, state: FSMContext):
 async def print_mes(message: Message, state: FSMContext):
     st = await state.get_state()
     if message.chat.type=="supergroup":
-        if st == States.set_main_admin:
+        if st == Event.set_main_admin:
             data = await state.get_data()
             new_main_admin_id = message.forward_from.id
             res_possible = await api.check_possible_main_admin(message.chat.id, new_main_admin_id)
@@ -1344,7 +1353,7 @@ async def print_mes(message: Message, state: FSMContext):
 async def echo(message: Message, state: FSMContext) -> None:
     st = await state.get_state()
     if message.chat.type == "private":
-        if st == States.text:
+        if st == Event.text:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 await state.update_data(text=message.text)
@@ -1354,10 +1363,10 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await asyncio.sleep(10)
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-        elif st == States.swap:
+        elif st == Event.swap:
             await send_swap_request(message, message.text, message.chat.id, state)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-        elif st == States.hm:
+        elif st == Event.hm:
             data = await state.get_data()
             t = await api.check_time(message.text, data["year"], data["month"], data["day"], message.from_user.id)
             match t:
@@ -1368,7 +1377,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 case _:
                     await state.update_data(hm=message.text)
                     await putInDb(message, state)
-        elif st == States.tz:
+        elif st == Event.tz:
             res = await api.change_tz(message.chat.id, message.text)
             if res["status"] == "OK":
                 await state.clear()
@@ -1399,7 +1408,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await asyncio.sleep(5)
                 await bot.delete_message(chat_id=message.chat.id, message_id=a.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-        elif st == States.renameQueue:
+        elif st == Queue.renameQueue:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':
                 data = await state.get_data()
@@ -1425,7 +1434,7 @@ async def echo(message: Message, state: FSMContext) -> None:
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
         
-        elif st == States.deleteQueueMember:
+        elif st == Queue.deleteQueueMember:
             data = await state.get_data()
             result = await api.delete_queue_member(message.text)
             match result:
