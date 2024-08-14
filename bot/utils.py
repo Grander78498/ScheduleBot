@@ -1,5 +1,5 @@
 import aiogram
-from aiogram import Bot, types
+from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from emoji import emojize
@@ -8,9 +8,10 @@ from bot.callbacks import *
 from queue_api import api
 from queue_api.api import EventType
 from django.conf import settings
+from .bot import bot
 
 
-async def send_swap_request(message: types.Message, second_member_id: str, from_user_id, state: FSMContext, bot: Bot):
+async def send_swap_request(message: types.Message, second_member_id: str, from_user_id, state: FSMContext):
     res = (await state.get_data())["swap"]
     queueID = res["queueID"]
     await bot.delete_message(chat_id=from_user_id, message_id=res["first_m"])
@@ -72,7 +73,7 @@ async def short_cut(message: types.Message, state: FSMContext):
     await message.answer("Выберите время", reply_markup=builder.as_markup())
 
 
-async def putInDb(message: types.Message, state: FSMContext, bot: Bot) -> None:
+async def putInDb(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()
     try:
         await state.clear()
@@ -125,7 +126,7 @@ async def putInDb(message: types.Message, state: FSMContext, bot: Bot) -> None:
                                                     reply_markup=builder_admin.as_markup())
 
 
-async def deadline_list_return(user_id, messageID, bot: Bot):
+async def deadline_list_return(user_id, messageID):
     res = await api.get_deadlines(user_id, 0, True)
     builder = InlineKeyboardBuilder()
     r = await bot.edit_message_text(text=res["message"], chat_id=user_id,
@@ -152,7 +153,7 @@ async def deadline_list_return(user_id, messageID, bot: Bot):
         await bot.edit_message_reply_markup(chat_id=user_id, message_id=r.message_id, reply_markup=builder.as_markup())
 
 
-async def queue_return(user_id, messageID, bot: Bot):
+async def queue_return(user_id, messageID):
     _dict = await api.get_all_queues(user_id, 0, False)
     status = _dict["status"]
     r = await bot.edit_message_text(text=_dict["message"], chat_id=user_id,
@@ -184,7 +185,7 @@ async def queue_return(user_id, messageID, bot: Bot):
                                             reply_markup=builder.as_markup())
 
 
-async def render_queue(queue_id: int, private: bool, bot: Bot):
+async def render_queue(queue_id: int, private: bool):
     try:
         group_id, queue, message_list = await api.print_queue(queue_id, private, bot)
         builder = InlineKeyboardBuilder()
@@ -199,14 +200,14 @@ async def render_queue(queue_id: int, private: bool, bot: Bot):
         print(ex)
 
 
-async def send_notification(queue_id, thread_id, group_id, message, bot: Bot):
+async def send_notification(queue_id, thread_id, group_id, message):
     mess_id = await api.get_message_id(queue_id, group_id)
     await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
     await api.update_message_id(queue_id, a.message_id, group_id)
 
 
-async def send_ready(event_id, thread_id, group_id, bot: Bot):
+async def send_ready(event_id, thread_id, group_id):
     builder = InlineKeyboardBuilder()
     queue_message_id = await api.get_message_id(event_id, group_id)
     await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
@@ -225,7 +226,7 @@ async def send_ready(event_id, thread_id, group_id, bot: Bot):
     await api.update_message_id(event_id, mess.message_id, group_id)
 
 
-async def update_deadline_info(res, user_id, message_id, bot: Bot):
+async def update_deadline_info(res, user_id, message_id):
     builder = InlineKeyboardBuilder()
     if res["status"]!="OK":
         builder.button(text="Создать напоминание", callback_data="add_deadline")
@@ -253,7 +254,7 @@ async def update_deadline_info(res, user_id, message_id, bot: Bot):
             print(e)
 
 
-async def delete_request_messages(first_message_id: int, second_message_id: int, chat1_id, chat2_id, bot: Bot):
+async def delete_request_messages(first_message_id: int, second_message_id: int, chat1_id, chat2_id):
     try:
         await bot.delete_message(chat_id=chat1_id, message_id=first_message_id)
         await bot.delete_message(chat_id=chat2_id, message_id=second_message_id)
@@ -262,7 +263,7 @@ async def delete_request_messages(first_message_id: int, second_message_id: int,
         await bot.send_message(chat_id=chat2_id, text="You are gay")
 
 
-async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int, bot: Bot):
+async def edit_request_message(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
     builder = InlineKeyboardBuilder()
     builder.button(text="Удалить запрос",
                    callback_data=RemoveSwapRequest(first_m_id=message1_id, second_m_id=message2_id,
@@ -274,7 +275,7 @@ async def edit_request_message(first_id: int, second_id: int, message1_id: int, 
         print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", ex)
 
 
-async def cmd_startgroup(message: types.Message, bot: Bot) -> None:
+async def cmd_startgroup(message: types.Message) -> None:
     if message.chat.type == "supergroup":
         chat_admins = await bot.get_chat_administrators(message.chat.id)
         d = []
@@ -299,5 +300,5 @@ async def cmd_startgroup(message: types.Message, bot: Bot) -> None:
                 "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
 
 
-async def get_bot_name(bot: Bot):
+async def get_bot_name():
     return (await bot.get_me()).username
