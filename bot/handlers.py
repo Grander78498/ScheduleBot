@@ -916,7 +916,7 @@ async def print_mes(message: Message, state: FSMContext):
                 await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
                 await bot.delete_message(chat_id=message.chat.id, message_id=data["set_main_admin"]["message_id"])
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-            elif data['status'] == 'ERROR':
+            elif data['set_main_admin']['status'] == 'ERROR':
                 await state.clear()
                 await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             else:
