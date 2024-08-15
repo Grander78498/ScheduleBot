@@ -36,7 +36,8 @@ async def delete_group_member(group_id: int, user_id: int):
     member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     if group.main_admin_id == user_id:
-        new_main_admin = await GroupMember.objects.filter(groups_id=group_id, is_admin=True).order_by('?').afirst()
+        new_main_admin = await (GroupMember.objects.select_related('user')
+                                .filter(groups_id=group_id, is_admin=True).order_by('?').afirst().user)
         group.main_admin = new_main_admin
         await group.asave()
     await member.adelete()
