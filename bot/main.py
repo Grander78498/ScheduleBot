@@ -25,7 +25,7 @@ dp.include_router(echo_router)
 async def main():
     logging.basicConfig(level=logging.INFO)
     logger.info(f"DEBUG = {settings.DEBUG}")
-    await dp.start_polling(bot, allowed_updates=["message", "chat_member"])
+    await dp.start_polling(bot, allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"])
 
 
 if __name__ == "__main__":
