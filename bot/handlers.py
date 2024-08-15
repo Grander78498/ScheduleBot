@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from aiogram.dispatcher.router import Router
 from aiogram.filters.command import Command, CommandStart, CommandObject
 from aiogram import F
-from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, IS_ADMIN
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, IS_ADMIN, RESTRICTED
 from aiogram.types import ChatMemberUpdated
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.deep_linking import decode_payload
@@ -31,6 +31,13 @@ months = {
     11: ["Ноябрь", 30],
     12: ["Декабрь", 31]
 }
+
+
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=(MEMBER | RESTRICTED) >> IS_ADMIN))
+async def added_admin(event: ChatMemberUpdated):
+    thread_id = await api.get_thread_id(event.chat.id)
+    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
+                        [event.from_user.full_name], event.chat.title, thread_id)
 
 
 @router.message(Command("queue"))
@@ -986,8 +993,3 @@ async def bot_delete_from_group(message: types.Message):
         await message.answer("Конкурент уничтожен")
 
 
-@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=IS_ADMIN))
-async def added_admin(event: ChatMemberUpdated):
-    thread_id = await api.get_thread_id(event.chat.id)
-    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
-                        [event.from_user.full_name], event.chat.title, thread_id)

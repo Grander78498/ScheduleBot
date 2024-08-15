@@ -7,9 +7,9 @@ from .bot import bot
 
 from django.conf import settings
 
-from .student_game import router as student_router
-from .text_handling import router as echo_router
 from .handlers import router as handler_router
+from .text_handling import router as echo_router
+from .student_game import router as student_router
 
 
 logging.basicConfig(level=logging.INFO)
