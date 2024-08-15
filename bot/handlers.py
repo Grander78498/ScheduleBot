@@ -36,13 +36,13 @@ months = {
 @router.chat_member(ChatMemberUpdatedFilter(member_status_changed=(ADMINISTRATOR | CREATOR) << (KICKED | LEFT | RESTRICTED | MEMBER)))
 async def added_admin(event: ChatMemberUpdated):
     thread_id = await api.get_thread_id(event.chat.id)
-    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
-                        [event.from_user.full_name], event.chat.title, thread_id)
+    await api.add_admin(event.chat.id, [event.new_chat_member.id], bot.id,
+                        [event.new_chat_member.full_name], event.chat.title, thread_id)
 
 
 @router.chat_member(ChatMemberUpdatedFilter(member_status_changed=(ADMINISTRATOR | CREATOR) >> (RESTRICTED | MEMBER)))
 async def deleted_admin(event: ChatMemberUpdated):
-    await api.delete_admin(event.from_user.id, event.chat.id)
+    await api.delete_admin(event.new_chat_member.id, event.chat.id)
 
 
 @router.message(Command("queue"))
