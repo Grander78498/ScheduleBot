@@ -24,7 +24,7 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
     if group_created:
         student_group.thread_id = thread_id
         crontab, _ = CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                            hour=18, minute=50, second=0)
+                                                            hour=18, minute=52, second=0)
         await PeriodicTask.objects.aget_or_create(crontab=crontab,
                                                   name=f'{group_id}',
                                                   task='session_begin',
