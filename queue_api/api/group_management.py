@@ -22,6 +22,13 @@ async def get_group_admin(group_id: int):
 
 async def delete_group(group_id: int):
     group = await TelegramGroup.objects.aget(tg_id=group_id)
+    try:
+        first_period_task = await PeriodicTask.objects.aget(name=f"{group.pk} begin")
+        second_period_task = await PeriodicTask.objects.aget(name=f"{group.pk} end")
+        await first_period_task.adelete()
+        await second_period_task.adelete()
+    except Exception:
+        pass
     await group.adelete()
 
 

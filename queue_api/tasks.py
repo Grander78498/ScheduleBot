@@ -72,7 +72,7 @@ def task_get_users(group_id: int, bot_id):
 def task_session_begin(group_id: int, thread_id: int):
     student_group = StudentGroup.objects.get(pk=group_id)
     student_group.is_session = True
-    task_session_end.apply_async(args=[group_id, thread_id], countdown=3600 * 15)
+    student_group.save()
     celery_event_loop.run_until_complete(session_begin(group_id, thread_id))
 
 
@@ -80,4 +80,5 @@ def task_session_begin(group_id: int, thread_id: int):
 def task_session_end(group_id: int, thread_id: int):
     student_group = StudentGroup.objects.get(pk=group_id)
     student_group.is_session = False
+    student_group.save()
     celery_event_loop.run_until_complete(session_end(group_id, thread_id))

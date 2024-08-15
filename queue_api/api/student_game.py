@@ -23,29 +23,40 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
     student_group, group_created = await StudentGroup.objects.aget_or_create(group_id=group_id)
     if group_created:
         student_group.thread_id = thread_id
-        crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                            hour=18, minute=54)
-        await PeriodicTask.objects.aget_or_create(crontab=crontab,
-                                                  name=f'{group_id}',
+        now_time = timezone.now() + timedelta(minutes=1)
+        first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
+                                                            hour=now_time.hour, minute=now_time.minute)
+        await PeriodicTask.objects.aget_or_create(crontab=first_crontab,
+                                                  name=f'{group_id} begin',
                                                   task='session_begin',
                                                   args=json.dumps([group_id, thread_id]))
-    if student_group.is_session:
-        await change_scholarship(user_id, group_id)
+        now_time = now_time + timedelta(minutes=1)
+        second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
+                                                            hour=now_time.hour, minute=now_time.minute)
+        await PeriodicTask.objects.aget_or_create(crontab=second_crontab,
+                                                  name=f'{group_id} end',
+                                                  task='session_end',
+                                                  args=json.dumps([group_id, thread_id]))
+        await student_group.asave()
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
+    stipa_text = ""
+    if student_group.is_session:
+        stipa_text = await change_scholarship(user_id, group_id)
     if is_created:
-        return f"Ну поживи как-нибудь на 100 рублей в месяц, авось не сдохнешь с голоду"
+        text = f"Ну поживи как-нибудь на 100 рублей в месяц, авось не сдохнешь с голоду. Ваш рейтинг - 0."
     if already_played(timezone.now(), student.date):
-        return f"Пары сегодня закончились, приходите завтра"
+        text = f"Пары сегодня закончились, приходите завтра. Ваш рейтинг равен {student.rating}, стипендия составляет {student.scholarship} р."
     else:
         mu, sigma = 0, DAY_MAX / 3 - 1
         delta = norm_distr(mu, sigma)
         student.rating = student.rating + delta
         await student.asave()
         if delta < 0:
-            return f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}"
-        return f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta} единиц и стал равен {student.rating}"
-
+            text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+        else:
+            text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+    return stipa_text + '\n\n\n' + text
 
 def normalize(value: float, _min: float, _max: float):
     return (value - _min) / (_max - _min)
