@@ -1,5 +1,5 @@
 from .imports import *
-from queue_api.tasks import task_new_main_admin
+
 
 
 async def check_admin(admin_id: int):
@@ -34,13 +34,15 @@ async def delete_group(group_id: int):
 
 
 async def delete_group_member(group_id: int, user_id: int):
+    from bot.utils import send_message_to_new_main_admin
+
     member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     if group.main_admin_id == user_id:
         new_main_admin = (await GroupMember.objects.select_related('user')
                                 .filter(groups_id=group_id, is_admin=True).order_by('?').afirst()).user
         group.main_admin = new_main_admin
-        task_new_main_admin.apply_async(args=(new_main_admin.pk, new_main_admin.full_name, group_id, group.name))
+        await send_message_to_new_main_admin(new_main_admin.pk, new_main_admin.full_name, group_id, group.name)
         await group.asave()
     await member.adelete()
 

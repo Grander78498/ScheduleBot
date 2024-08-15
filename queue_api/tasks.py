@@ -1,7 +1,8 @@
 from celery import shared_task
 from django.utils import timezone
+from queue_api.api import print_date_diff
 from telethon import TelegramClient
-from bot import send_ready, send_notification, render_queue, edit_request_message, session_begin, session_end, send_message_to_new_main_admin
+from bot import send_ready, send_notification, render_queue, edit_request_message, session_begin, session_end
 import asyncio
 from .models import *
 from config import config
@@ -18,8 +19,6 @@ def task_send_ready(event_id):
 
 @shared_task(name="send_notif")
 def task_send_notif(event_id):
-    from queue_api.api import print_date_diff
-
     event = Event.objects.get(pk=event_id)
     group = TelegramGroup.objects.get(pk=event.group_id)
     try:
@@ -83,8 +82,3 @@ def task_session_end(group_id: int, thread_id: int):
     student_group.is_session = False
     student_group.save()
     celery_event_loop.run_until_complete(session_end(group_id, thread_id))
-
-
-@shared_task(name='new_main_admin')
-def task_new_main_admin(user_id: int, user_name: str, group_id: int, group_name: str):
-    celery_event_loop.run_until_complete(send_message_to_new_main_admin(user_id, user_name, group_id, group_name))
