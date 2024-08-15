@@ -13,9 +13,9 @@ async def add_admin(group_id: int, admins: list[int], bot_id: int, names: list[s
             await add_user_to_group(group_id, admin, name, True, group_name=group_name, thread_id=thread_id)
 
 
-async def delete_admin(user_id: int, group_id: int):
+async def change_admin_status(user_id: int, group_id: int, is_admin: bool):
     member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
-    member.is_admin = False
+    member.is_admin = is_admin
     await member.asave()
 
 
