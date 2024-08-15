@@ -44,7 +44,7 @@ async def print_info_queue(message: types.Message):
 
 @router.message(Command("set_main_admin"))
 async def set_main_admin(message: types.Message, state: FSMContext):
-    if message.chat.type=="private":
+    if message.chat.type == "private":
         await message.answer("Данная команда доступна только в группе")
     elif message.chat.type == "supergroup":
         res = await api.check_main_admin(message.chat.id, message.from_user.id)
@@ -53,10 +53,13 @@ async def set_main_admin(message: types.Message, state: FSMContext):
             await asyncio.sleep(5)
             await bot.delete_message(chat_id=message.chat.id, message_id=mes.message_id)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-            await state.update_data(set_main_admin={"message_id":message.message_id, "status":"ERROR"})
+            await state.update_data(set_main_admin={"message_id": message.message_id, "status": "ERROR",
+                                                    'bot_message_id': mes.message_id})
             await state.set_state(Event.set_main_admin)
         else:
-            await state.update_data(set_main_admin={"message_id":message.message_id, "status":"OK"})
+            mes = await message.answer('Перешлите сообщение от того администратора, которого вы хотите назначить')
+            await state.update_data(set_main_admin={"message_id": message.message_id, "status": "OK",
+                                                    'bot_message_id': mes.message_id})
             await state.set_state(Event.set_main_admin)
 
 
@@ -903,6 +906,7 @@ async def print_mes(message: Message, state: FSMContext):
     if message.chat.type=="supergroup":
         if st == Event.set_main_admin:
             data = await state.get_data()
+            await bot.delete_message(chat_id=message.chat.id, message_id=data['set_main_admin']['bot_message_id'])
             new_main_admin_id = message.forward_from.id
             res_possible = await api.check_possible_main_admin(message.chat.id, new_main_admin_id)
             if res_possible['status'] == 'ERROR':

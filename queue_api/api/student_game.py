@@ -25,38 +25,39 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
         student_group.thread_id = thread_id
         now_time = timezone.now() + timedelta(minutes=1)
         first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                            hour=now_time.hour, minute=now_time.minute)
+                                                                        hour=now_time.hour, minute=now_time.minute)
         await PeriodicTask.objects.aget_or_create(crontab=first_crontab,
                                                   name=f'{group_id} begin',
                                                   task='session_begin',
                                                   args=json.dumps([group_id, thread_id]))
         now_time = now_time + timedelta(minutes=1)
         second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                            hour=now_time.hour, minute=now_time.minute)
+                                                                         hour=now_time.hour, minute=now_time.minute)
         await PeriodicTask.objects.aget_or_create(crontab=second_crontab,
                                                   name=f'{group_id} end',
                                                   task='session_end',
                                                   args=json.dumps([group_id, thread_id]))
         await student_group.asave()
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
-    student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
-    stipa_text = ""
     if student_group.is_session:
-        stipa_text = await change_scholarship(user_id, group_id)
-    if is_created:
-        text = f"Ну поживи как-нибудь на 100 рублей в месяц, авось не сдохнешь с голоду. Ваш рейтинг - 0."
-    if already_played(timezone.now(), student.date):
-        text = f"Пары сегодня закончились, приходите завтра. Ваш рейтинг равен {student.rating}, стипендия составляет {student.scholarship} р."
+        text = await change_scholarship(user_id, group_id)
     else:
-        mu, sigma = 0, DAY_MAX / 3 - 1
-        delta = norm_distr(mu, sigma)
-        student.rating = student.rating + delta
-        await student.asave()
-        if delta < 0:
-            text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+        student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
+        if is_created:
+            text = f"Ну поживи как-нибудь на 100 рублей в месяц, авось не сдохнешь с голоду. Ваш рейтинг - 0."
+        elif already_played(timezone.now(), student.date):
+            text = f"Пары сегодня закончились, приходите завтра. Ваш рейтинг равен {student.rating}, стипендия составляет {student.scholarship} р."
         else:
-            text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
-    return stipa_text + '\n\n\n' + text
+            mu, sigma = 0, DAY_MAX / 3 - 1
+            delta = norm_distr(mu, sigma)
+            student.rating = round(student.rating + delta, 1)
+            await student.asave()
+            if delta < 0:
+                text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+            else:
+                text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+    return text
+
 
 def normalize(value: float, _min: float, _max: float):
     return (value - _min) / (_max - _min)
@@ -65,21 +66,27 @@ def normalize(value: float, _min: float, _max: float):
 async def change_scholarship(user_id: int, group_id: int):
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
-    rating = student.rating
-    prev_rating = student.prev_rating
-    delta_rating = rating - prev_rating
-    normalized_delta_rating = normalize(delta_rating, -DAY_MAX * 14, DAY_MAX * 14)
-    mu = student.scholarship * normalized_delta_rating
-    delta = student.scholarship * normalized_delta_rating / 3
-    delta_scholarship = norm_distr(mu, delta)
-    if delta_rating <= 0:
-        student.scholarship = student.scholarship - delta_scholarship
-        await student.asave()
-        text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship} р."
+    if not is_created and already_played(timezone.now(), student.date):
+        text = f'Сессия для тебя уже закончилась, иди бухай'
+    elif is_created:
+        text = f'Молодец, впервые на сессию пришёл в вуз! Твоя стипендия составляет {student.scholarship} р. Рейтинг равен {student.rating}'
     else:
-        student.scholarship = student.scholarship + delta_scholarship
+        rating = student.rating
+        prev_rating = student.prev_rating
+        delta_rating = rating - prev_rating
+        normalized_delta_rating = normalize(delta_rating, -DAY_MAX * 14, DAY_MAX * 14)
+        mu = student.scholarship * normalized_delta_rating
+        delta = student.scholarship * normalized_delta_rating / 3
+        delta_scholarship = norm_distr(mu, delta)
+        if delta_rating <= 0:
+            student.scholarship = student.scholarship - delta_scholarship
+            text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship} р. Рейтинг обнулён"
+        else:
+            student.scholarship = student.scholarship + delta_scholarship
+            text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship} р. Рейтинг обнулён"
+        student.scholarship = round(student.scholarship, 1)
+        student.rating = 0
         await student.asave()
-        text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship} р."
     return text
 
 
