@@ -312,9 +312,9 @@ async def session_end(group_id: int, thread_id: int):
     await bot.send_message(chat_id=group_id, message_thread_id=thread_id, text='СЕССИЯ ЗАКОНЧИЛАСЬ(((')
 
 
-async def send_message_to_new_main_admin(user_id: int, user_name: str, group_id: int, group_name: str):
+async def send_message_to_new_main_admin(user_id: int, user_name: str, group_id: int, group_name: str, thread_id: int):
     try:
         await bot.send_message(chat_id=user_id, text=f'Боги увидели в вас великую силу и назначили главным админом в группе {group_name}. Пользуйтесь этой силой с умом! Если боитесь свалившегося на вас груза, то можете переназначить эту должность на другого админа с помощью команды /set_main_admin')
-    except Exception as e:
-        print(e, group_id)
-        await bot.send_message(chat_id=group_id, text=f'Новым главным админом был назначен {user_name}. Если он боится свалившегося на вас груза, то можете переназначить эту должность на другого админа с помощью команды /set_main_admin')
+    except Exception:
+        await bot.send_message(chat_id=group_id, message_thread_id=thread_id,
+                               text=f'Новым главным админом был назначен {user_name}. Если он боится свалившегося на него груза, то он может переназначить эту должность на другого админа с помощью команды /set_main_admin')
