@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from aiogram.dispatcher.router import Router
 from aiogram.filters.command import Command, CommandStart, CommandObject
 from aiogram import F
-from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, IS_ADMIN, RESTRICTED
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, IS_ADMIN, RESTRICTED, LEFT, ADMINISTRATOR, CREATOR
 from aiogram.types import ChatMemberUpdated
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.deep_linking import decode_payload
@@ -33,8 +33,15 @@ months = {
 }
 
 
-@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=(MEMBER | RESTRICTED) >> IS_ADMIN))
+@router.chat_member(ChatMemberUpdatedFilter(member_status_changed=(ADMINISTRATOR | CREATOR) << (KICKED | LEFT | RESTRICTED | MEMBER)))
 async def added_admin(event: ChatMemberUpdated):
+    thread_id = await api.get_thread_id(event.chat.id)
+    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
+                        [event.from_user.full_name], event.chat.title, thread_id)
+
+
+@router.chat_member(ChatMemberUpdatedFilter(member_status_changed=(ADMINISTRATOR | CREATOR) >> (RESTRICTED | MEMBER)))
+async def deleted_admin(event: ChatMemberUpdated):
     thread_id = await api.get_thread_id(event.chat.id)
     await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
                         [event.from_user.full_name], event.chat.title, thread_id)
@@ -138,12 +145,13 @@ async def cmd_change_tz(message: types.Message, state: FSMContext):
 
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
 async def user_blocked_bot(event: ChatMemberUpdated):
-    await api.update_started(event.from_user.id, event.from_user.full_name, False)
+    if event.chat.type == "private":
+        await api.update_started(event.from_user.id, event.from_user.full_name, False)
 
 
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=MEMBER))
 async def user_unblocked_bot(event: ChatMemberUpdated):
-    if event.chat.type == "group" or event.chat.type == "supergroup":
+    if event.chat.type == "private":
         await api.update_started(event.from_user.id, event.from_user.full_name, True)
 
 
