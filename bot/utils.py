@@ -302,3 +302,11 @@ async def cmd_startgroup(message: types.Message) -> None:
 
 async def get_bot_name():
     return (await bot.get_me()).username
+
+
+async def session_begin(group_id: int, thread_id: int):
+    await bot.send_message(chat_id=group_id, message_thread_id=thread_id, text='СЕССИЯ НАЧАЛАСЬ!!!')
+
+
+async def session_end(group_id: int, thread_id: int):
+    await bot.send_message(chat_id=group_id, message_thread_id=thread_id, text='СЕССИЯ ЗАКОНЧИЛАСЬ(((')

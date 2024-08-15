@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 from queue_api.api import print_date_diff
 from telethon import TelegramClient
-from bot import send_ready, send_notification, render_queue, edit_request_message
+from bot import send_ready, send_notification, render_queue, edit_request_message, session_begin, session_end
 import asyncio
 from .models import *
 from config import config
@@ -66,3 +66,18 @@ def task_get_users(group_id: int, bot_id):
     with client_bot:
         result = asyncio.get_event_loop().run_until_complete(get_users(client_bot, group_id, bot_id))
         return result
+
+
+@shared_task(name='session_begin')
+def task_session_begin(group_id: int, thread_id: int):
+    student_group = StudentGroup.objects.get(pk=group_id)
+    student_group.is_session = True
+    task_session_end.apply_async(args=[group_id, thread_id], countdown=3600 * 15)
+    celery_event_loop.run_until_complete(session_begin(group_id, thread_id))
+
+
+@shared_task(name='session_end')
+def task_session_end(group_id: int, thread_id: int):
+    student_group = StudentGroup.objects.get(pk=group_id)
+    student_group.is_session = False
+    celery_event_loop.run_until_complete(session_end(group_id, thread_id))

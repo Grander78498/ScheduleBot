@@ -19,8 +19,18 @@ def norm_distr(mu: float, sigma: float):
     return rng.normal(mu, sigma)
 
 
-async def change_rating(user_id: int, group_id: int):
-    student_group, _ = await StudentGroup.objects.aget_or_create(group_id=group_id)
+async def change_rating(user_id: int, group_id: int, thread_id: int):
+    student_group, group_created = await StudentGroup.objects.aget_or_create(group_id=group_id)
+    if group_created:
+        student_group.thread_id = thread_id
+        crontab, _ = CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
+                                                            hour=18, minute=50, second=0)
+        await PeriodicTask.objects.aget_or_create(crontab=crontab,
+                                                  name=f'{group_id}',
+                                                  task='session_begin',
+                                                  args=json.dumps([group_id, thread_id]))
+    if student_group.is_session:
+        await change_scholarship(user_id, group_id)
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, is_created = await Student.objects.aget_or_create(group_member_id=group_member.pk)
     if is_created:
@@ -30,7 +40,7 @@ async def change_rating(user_id: int, group_id: int):
     else:
         mu, sigma = 0, DAY_MAX / 3 - 1
         delta = norm_distr(mu, sigma)
-        student.rating = F('rating') + delta
+        student.rating = student.rating + delta
         await student.asave()
         if delta < 0:
             return f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}"
@@ -52,11 +62,11 @@ async def change_scholarship(user_id: int, group_id: int):
     delta = student.scholarship * normalized_delta_rating / 3
     delta_scholarship = norm_distr(mu, delta)
     if delta_rating <= 0:
-        student.scholarship = F('scholarship') - delta_scholarship
+        student.scholarship = student.scholarship - delta_scholarship
         await student.asave()
         text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship} р."
     else:
-        student.scholarship = F('scholarship') + delta_scholarship
+        student.scholarship = student.scholarship + delta_scholarship
         await student.asave()
         text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship} р."
     return text

@@ -45,9 +45,9 @@ async def print_queue(queue_id: int, private: bool, bot: Bot):
             res_string += "\n"
     else:
         for index, member in enumerate(members, 1):
-            if index == len(members) - 1 and index > 10:
+            if index == len(members) - 1 and index > 30:
                 res_string += '.................\n'
-            if index <= 8 or (index <= 10 and len(members) <= 10) or (index >= len(members) - 1 and index > 10):
+            if index <= 28 or (index <= 30 and len(members) <= 30) or (index >= len(members) - 1 and index > 30):
                 user = await TelegramUser.objects.aget(pk=member.user_id)
                 res_string += (str(index) + '. ')
                 res_string += f"{user.full_name[:32]}" + ("..." if len(user.full_name) > 32 else "")

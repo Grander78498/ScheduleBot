@@ -55,6 +55,8 @@ class Student(models.Model):
 
 class StudentGroup(models.Model):
     group = models.OneToOneField('TelegramGroup', primary_key=True, on_delete=models.CASCADE)
+    thread_id = models.BigIntegerField(null=True)
+    is_session = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
 
