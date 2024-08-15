@@ -13,6 +13,12 @@ async def add_admin(group_id: int, admins: list[int], bot_id: int, names: list[s
             await add_user_to_group(group_id, admin, name, True, group_name=group_name, thread_id=thread_id)
 
 
+async def delete_admin(user_id: int, group_id: int):
+    member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
+    member.is_admin = False
+    await member.asave()
+
+
 async def add_user_to_group(group_id: int,
                             user_id: int, user_fullname: str, is_admin: bool = False, group_name = None, thread_id = None):
     if group_name is None:

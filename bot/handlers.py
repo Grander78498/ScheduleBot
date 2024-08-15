@@ -42,9 +42,7 @@ async def added_admin(event: ChatMemberUpdated):
 
 @router.chat_member(ChatMemberUpdatedFilter(member_status_changed=(ADMINISTRATOR | CREATOR) >> (RESTRICTED | MEMBER)))
 async def deleted_admin(event: ChatMemberUpdated):
-    thread_id = await api.get_thread_id(event.chat.id)
-    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
-                        [event.from_user.full_name], event.chat.title, thread_id)
+    await api.delete_admin(event.from_user.id, event.chat.id)
 
 
 @router.message(Command("queue"))
