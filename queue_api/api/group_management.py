@@ -38,13 +38,13 @@ async def delete_group_member(group_id: int, user_id: int):
 
     member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
+    await member.adelete()
     if group.main_admin_id == user_id:
         new_main_admin = (await GroupMember.objects.select_related('user')
-                                .filter(groups_id=group_id, is_admin=True).order_by('?').afirst()).user
+                          .filter(groups_id=group_id, is_admin=True).order_by('?').afirst()).user
         group.main_admin = new_main_admin
         await send_message_to_new_main_admin(new_main_admin.pk, new_main_admin.full_name, group_id, group.name)
         await group.asave()
-    await member.adelete()
 
 
 async def check_main_admin(group_id: int, admin_id: int):
