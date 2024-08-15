@@ -70,3 +70,8 @@ async def check_possible_main_admin(group_id: int, admin_id: int):
 async def get_group_name(group_id: int):
     group = await TelegramGroup.objects.aget(tg_id=group_id)
     return group.name
+
+
+async def get_thread_id(group_id: int):
+    return (await TelegramGroup.objects.aget(pk=group_id)).thread_id
+

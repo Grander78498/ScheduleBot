@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from aiogram.dispatcher.router import Router
 from aiogram.filters.command import Command, CommandStart, CommandObject
 from aiogram import F
-from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER
+from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, IS_ADMIN
 from aiogram.types import ChatMemberUpdated
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.deep_linking import decode_payload
@@ -984,3 +984,10 @@ async def bot_delete_from_group(message: types.Message):
         await api.delete_group_member(message.chat.id, message.left_chat_participant['id'])
     else:
         await message.answer("Конкурент уничтожен")
+
+
+@router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=IS_ADMIN))
+async def added_admin(event: ChatMemberUpdated):
+    thread_id = await api.get_thread_id(event.chat.id)
+    await api.add_admin(event.chat.id, [event.from_user.id], bot.id,
+                        [event.from_user.full_name], event.chat.title, thread_id)
