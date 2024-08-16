@@ -21,7 +21,7 @@ async def get_user_id(first_member_id: int, second_member_id: str):
     if second_member_id == first_member_id:
         return {'status': 'Self chosen', 'message': 'Самолайк == самоотсос'}
     second = await QueueMember.objects.aget(pk=second_member_id)
-    return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ай молодца, сосни-ка хуйца',
+    return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ваш запрос был успешно отправлен',
             'first_name': (await TelegramUser.objects.aget(pk=first.user_id)).full_name, 'queue_name': queue.text,
             'first_position': await get_queue_position(first.pk), 'second_position': await get_queue_position(second.pk),
             'second_name': (await TelegramUser.objects.aget(pk=second.user_id)).full_name}
