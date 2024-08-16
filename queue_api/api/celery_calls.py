@@ -41,14 +41,10 @@ async def create_queue_tasks(event_id: int, group_id: int):
         try:
             getattr(event, "queue")
             message = \
-                f"""НАПОМИНАНИЕ!!!
-            Очередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}
-            """
+                f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}"""
         except Exception:
             message = \
-                f"""НАПОМИНАНИЕ!!!
-                    До дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}
-                    """
+                f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}"""
         await asyncio.sleep(7)
         await send_notification(event.pk, group.thread_id, group.pk, message)
         await asyncio.sleep(3)

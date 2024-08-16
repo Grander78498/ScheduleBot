@@ -959,7 +959,7 @@ async def voting(call: CallbackQuery, callback_data: QueueIDCallback):
 async def unvoting(call: CallbackQuery, callback_data: RemoveMyself):
     result = await api.delete_queue_member_by_id(callback_data.queueID, call.from_user.id)
     if result == 'Incorrect':
-        await call.answer("Вы мертвы")
+        await call.answer(emojize("Чтобы выйти из очереди, нужно в неё добавиться :nerd_face:"))
     # Здесь был render_queue
 
 
@@ -969,8 +969,8 @@ async def get_number(call: CallbackQuery, callback_data: FindMyself):
         member_id = await api.get_queue_member_id(callback_data.queueID, call.from_user.id)
         result = await api.get_queue_position(member_id)
         await call.answer("Ваше место в очереди - {}".format(result))
-    except Exception as e:
-        await call.answer("Еблан, а в очередь встать не судьба??????")
+    except Exception:
+        await call.answer("Попробуйте встать в очередь, чтобы узнать свою позицию")
 
 
 @router.message(F.new_chat_member)
@@ -989,7 +989,6 @@ async def bot_add_to_group(message: types.Message):
 @router.message(F.left_chat_participant)
 async def bot_delete_from_group(message: types.Message):
     if (await bot.get_me()).id == message.left_chat_participant['id']:
-        print("Хуй")
         await api.delete_group(message.chat.id)
     elif not message.left_chat_participant['is_bot']:
         await api.delete_group_member(message.chat.id, message.left_chat_participant['id'])

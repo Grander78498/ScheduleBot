@@ -128,7 +128,7 @@ def check_timezone(tz):
 
 def check_text(text: str, max_len):
     if len(text.encode('utf-8')) >= max_len:
-        return {'status': 'NO', 'message': 'Насрал много байтов - повтори ввод названия'}
+        return {'status': 'NO', 'message': 'Слишком длинное название - повторите ввод'}
     return {'status': 'OK'}
 
 

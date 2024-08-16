@@ -27,12 +27,12 @@ async def change_topic(group_id: int, thread_id: int):
 
 async def change_tz(user_id: int, tz: str):
     if check_timezone(tz):
-        tz = int(tz)
+        tz = int(tz) + 3
     else:
-        return {'status': 'NO', 'message': 'Опять саратовское время вводишь???. Пробуй ещё'}
+        return {'status': 'NO', 'message': 'Опять саратовское время вводишь??? Пробуй ещё'}
 
     await TelegramUser.objects.filter(pk=user_id).aupdate(tz=tz)
-    return {'status': 'OK', 'message': 'Справился с вводом одной цифры'}
+    return {'status': 'OK', 'message': 'Часовой пояс был успешно изменён'}
 
 
 async def update_done_status(deadline_status_id: int):
@@ -45,7 +45,7 @@ async def update_done_status(deadline_status_id: int):
 async def update_deadline_text(deadline_status_id: int, deadline_text: str):
     deadline = await Deadline.objects.aget(deadlinestatus__id=deadline_status_id)
     if deadline.text == deadline_text:
-        return {"status": 'ERROR', 'message': 'Долбаёб с Альцгеймером'}
+        return {"status": 'ERROR', 'message': 'Ну и зачем вводить то же самое название?'}
     deadline.text = deadline_text
     message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
     text = print_deadline_message(deadline_text, print_date_diff(timezone.now(), deadline.date))

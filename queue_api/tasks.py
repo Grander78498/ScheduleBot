@@ -24,14 +24,10 @@ def task_send_notif(event_id):
     try:
         getattr(event, "queue")
         message = \
-            f"""НАПОМИНАНИЕ!!!
-        Очередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}
-        """
+            f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} станет активна через {print_date_diff(timezone.now(), event.date)}"""
     except Exception:
         message = \
-            f"""НАПОМИНАНИЕ!!!
-                До дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}
-                """
+            f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}"""
     celery_event_loop.run_until_complete(send_notification(event.id, group.thread_id, group.tg_id, message))
 
 
@@ -44,7 +40,7 @@ def task_render_queue(queue_id, private):
 @shared_task(name="swap_delete")
 def task_swap_delete(first_id: int, second_id: int, message1_id: int, message2_id: int, queue_id: int):
     celery_event_loop.run_until_complete(edit_request_message(first_id, second_id,
-                                                                  message1_id, message2_id, queue_id))
+                                                              message1_id, message2_id, queue_id))
 
 
 async def get_users(client: TelegramClient, group_id, bot_id):

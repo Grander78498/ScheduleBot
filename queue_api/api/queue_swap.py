@@ -14,12 +14,12 @@ async def get_user_id(first_member_id: int, second_member_id: str):
     try:
         second_member_id = int(second_member_id)
     except Exception:
-        return {'status': 'Incorrect input', 'message': 'Ты долбаёб блять хули ты хуйню какую-то пихаешь??????'}
+        return {'status': 'Incorrect input', 'message': 'Просьба вводить только целые числа'}
 
     if second_member_id not in [member.pk async for member in queue.queuemember_set.all()]:
-        return {'status': 'Wrong queue', 'message': 'Хули ты в неправильную очередь лезешь уёбок????????'}
+        return {'status': 'Wrong queue', 'message': 'Вы ввели индекс не из этой очереди'}
     if second_member_id == first_member_id:
-        return {'status': 'Self chosen', 'message': 'Самолайк == самоотсос'}
+        return {'status': 'Self chosen', 'message': 'Поздравляю, вы поменялись с самим собой'}
     second = await QueueMember.objects.aget(pk=second_member_id)
     return {'status': 'OK', 'user_id': second.user_id, 'message': 'Ваш запрос был успешно отправлен',
             'first_name': (await TelegramUser.objects.aget(pk=first.user_id)).full_name, 'queue_name': queue.text,

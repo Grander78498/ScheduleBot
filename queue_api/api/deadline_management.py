@@ -41,7 +41,7 @@ async def delete_deadline(deadline_id: int):
 async def create_deadline_request(user_id: int, group_id: int):
     deadline_request, is_created = await DeadlineRequest.objects.aget_or_create(user_id=user_id, group_id=group_id)
     if not is_created:
-        return {'status': 'ERROR', 'message': 'Ваш запрос послан нахуй заранее - у вас уже есть непроверенный запрос на создание дедлайна'}
+        return {'status': 'ERROR', 'message': 'У вас уже есть непроверенный запрос на создание дедлайна'}
     else:
         return {'status': 'OK'}
 
@@ -109,4 +109,4 @@ async def get_deadline_name(deadline_status_id: int):
 
 
 def print_deadline_message(text, date):
-    return "Ваша смертная линия {} наступит через {}.".format(text, date)
+    return "Дедлайн {} наступит через {}.".format(text, date)

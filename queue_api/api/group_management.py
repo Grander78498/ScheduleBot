@@ -53,7 +53,7 @@ async def check_main_admin(group_id: int, admin_id: int):
     if group.main_admin_id == admin_id:
         return {"status": "OK"}
     else:
-        return {"status": "ERROR", "message": "Ты здесь никто, ты - огузок!!!"}
+        return {"status": "ERROR", "message": "Вы не главный админ, не притворяйтесь"}
 
 
 async def check_possible_main_admin(group_id: int, admin_id: int):
@@ -62,9 +62,9 @@ async def check_possible_main_admin(group_id: int, admin_id: int):
         if is_admin:
             return {"status": "OK"}
         else:
-            return {"status": "ERROR", "message": "Пытаешься назначить огузка шефом???????"}
+            return {"status": "ERROR", "message": "Нельзя назначить главным админом не админа"}
     except Exception:
-        return {"status": "ERROR", "message": "Долбаёба со стороны нанимаешь??????"}
+        return {"status": "ERROR", "message": "Нельзя назначить главным админом человека со стороны"}
 
 
 async def get_group_name(group_id: int):
