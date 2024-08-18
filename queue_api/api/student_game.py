@@ -93,14 +93,13 @@ async def change_scholarship(user_id: int, group_id: int):
 async def print_places(user_id: int, group_id: int):
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, _ = await Student.objects.aget_or_create(group_member_id=group_member.pk)
-    rating, scholarship = student.rating, student.scholarship
     group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
     rating_list = [student.pk async for student in
                    Student.objects.filter(group_member_id__in=group_member_query).order_by('-rating')]
     scholarship_list = [student.pk async for student in
                         Student.objects.filter(group_member_id__in=group_member_query).order_by('-scholarship')]
-    rating_place = rating_list.index(rating) + 1
-    scholarship_place = scholarship_list.index(scholarship) + 1
+    rating_place = rating_list.index(student.pk) + 1
+    scholarship_place = scholarship_list.index(student.pk) + 1
     return f"Ваше место по рейтингу: {rating_place}\nВаше место по стипендии: {scholarship_place}"
 
 
