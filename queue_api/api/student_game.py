@@ -94,7 +94,7 @@ async def print_places(user_id: int, group_id: int):
     group_member = await GroupMember.objects.aget(user_id=user_id, groups_id=group_id)
     student, _ = await Student.objects.aget_or_create(group_member_id=group_member.pk)
     rating, scholarship = student.rating, student.scholarship
-    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(group_id=group_id)]
+    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
     rating_list = [student.rating async for student in
                    Student.objects.filter(group_member_id__in=group_member_query).order_by('-rating')]
     scholarship_list = [student.scholarship async for student in
@@ -107,7 +107,7 @@ async def print_places(user_id: int, group_id: int):
 
 
 async def print_top_ratings(group_id: int):
-    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(group_id=group_id)]
+    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
     rating_list = [(student.rating, student.group_member__user.full_name) async for student in
                    Student.objects.select_related("group_member__user")
                    .filter(group_member_id__in=group_member_query).order_by('-rating')]
@@ -118,7 +118,7 @@ async def print_top_ratings(group_id: int):
 
 
 async def print_top_scholarships(group_id: int):
-    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(group_id=group_id)]
+    group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
     scholarship_list = [(student.scholarship, student.group_member__user.full_name) async for student in
                         Student.objects.select_related("group_member__user")
                         .filter(group_member_id__in=group_member_query).order_by('-scholarship')]
