@@ -108,7 +108,7 @@ async def print_places(user_id: int, group_id: int):
 
 async def print_top_ratings(group_id: int):
     group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
-    rating_list = [(student.rating, student.group_member__user.full_name) async for student in
+    rating_list = [(student.rating, student.group_member.user.full_name) async for student in
                    Student.objects.select_related("group_member__user")
                    .filter(group_member_id__in=group_member_query).order_by('-rating')]
     res_string = "Топ-10 игроков по рейтингу:\n_______________\n"
@@ -119,7 +119,7 @@ async def print_top_ratings(group_id: int):
 
 async def print_top_scholarships(group_id: int):
     group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
-    scholarship_list = [(student.scholarship, student.group_member__user.full_name) async for student in
+    scholarship_list = [(student.scholarship, student.group_member.user.full_name) async for student in
                         Student.objects.select_related("group_member__user")
                         .filter(group_member_id__in=group_member_query).order_by('-scholarship')]
     res_string = "Топ-10 игроков по стипендии:\n_______________\n"
