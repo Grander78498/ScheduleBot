@@ -29,3 +29,11 @@ async def top_scholarship_handler(message: types.Message):
         await message.answer(await api.print_top_scholarships(message.chat.id))
     else:
         await message.answer('Ты дебила кусок, эта игра для групп предназначена!')
+
+
+@router.message(Command('my_place'))
+async def top_scholarship_handler(message: types.Message):
+    if message.chat.type == 'supergroup':
+        await message.answer(await api.print_places(message.from_user.id, message.chat.id))
+    else:
+        await message.answer('Ты дебила кусок, эта игра для групп предназначена!')

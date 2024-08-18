@@ -49,8 +49,8 @@ class Student(models.Model):
     group_member = models.OneToOneField('GroupMember', on_delete=models.CASCADE, primary_key=True)
     date = models.DateTimeField(auto_now=True)
     prev_rating = models.SmallIntegerField(default=0)
-    rating = models.SmallIntegerField(default=0)
-    scholarship = models.IntegerField(default=100)
+    rating = models.FloatField(default=0)
+    scholarship = models.FloatField(default=100)
 
 
 class StudentGroup(models.Model):

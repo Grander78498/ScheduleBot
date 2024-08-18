@@ -99,8 +99,6 @@ async def print_places(user_id: int, group_id: int):
                    Student.objects.filter(group_member_id__in=group_member_query).order_by('-rating')]
     scholarship_list = [student.scholarship async for student in
                         Student.objects.filter(group_member_id__in=group_member_query).order_by('-scholarship')]
-    print(Student.objects.filter(group_member_id__in=group_member_query).query)
-    print(rating_list, scholarship_list)
     rating_place = rating_list.index(rating) + 1
     scholarship_place = scholarship_list.index(scholarship) + 1
     return f"Ваше место по рейтингу: {rating_place}\nВаше место по стипендии: {scholarship_place}"
