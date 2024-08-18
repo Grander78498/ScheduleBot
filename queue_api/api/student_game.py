@@ -53,9 +53,9 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
             student.rating = round(student.rating + delta, 1)
             await student.asave()
             if delta < 0:
-                text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
             else:
-                text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
     return text
 
 
@@ -95,9 +95,9 @@ async def print_places(user_id: int, group_id: int):
     student, _ = await Student.objects.aget_or_create(group_member_id=group_member.pk)
     rating, scholarship = student.rating, student.scholarship
     group_member_query = [gm.pk async for gm in GroupMember.objects.filter(groups_id=group_id)]
-    rating_list = [student.rating async for student in
+    rating_list = [student.pk async for student in
                    Student.objects.filter(group_member_id__in=group_member_query).order_by('-rating')]
-    scholarship_list = [student.scholarship async for student in
+    scholarship_list = [student.pk async for student in
                         Student.objects.filter(group_member_id__in=group_member_query).order_by('-scholarship')]
     rating_place = rating_list.index(rating) + 1
     scholarship_place = scholarship_list.index(scholarship) + 1
