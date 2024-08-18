@@ -112,7 +112,7 @@ async def print_top_ratings(group_id: int):
                    Student.objects.select_related("group_member__user")
                    .filter(group_member_id__in=group_member_query).order_by('-rating')]
     res_string = "Топ-10 игроков по рейтингу:\n_______________\n"
-    for index, rating, name in enumerate(rating_list):
+    for index, (rating, name) in enumerate(rating_list):
         res_string += f"{index + 1}. {name} --- {rating}\n"
     return res_string
 
@@ -123,6 +123,6 @@ async def print_top_scholarships(group_id: int):
                         Student.objects.select_related("group_member__user")
                         .filter(group_member_id__in=group_member_query).order_by('-scholarship')]
     res_string = "Топ-10 игроков по стипендии:\n_______________\n"
-    for index, scholarship, name in enumerate(scholarship_list):
+    for index, (scholarship, name) in enumerate(scholarship_list):
         res_string += f"{index + 1}. {name} --- {scholarship}\n"
     return res_string
