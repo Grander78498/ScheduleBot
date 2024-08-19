@@ -91,8 +91,8 @@ async def delete_deadline_status(deadline_status_id: int):
 
 
 async def print_deadline(deadline_id: int):
-    deadline = await Deadline.objects.get(pk=deadline_id)
-    return f"Дедлайн {deadline.text} наступил! Пути назад больше нет"
+    deadline = await Deadline.objects.aget(pk=deadline_id)
+    return f"Дедлайн {deadline.text} наступил\! Пути назад больше нет"
 
 
 async def check_deadline_status(deadline_status_id: int):

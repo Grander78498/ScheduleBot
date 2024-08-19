@@ -19,7 +19,7 @@ def task_send_ready(event_id):
 
 @shared_task(name="send_notif")
 def task_send_notif(event_id):
-    event = Event.objects.get(pk=event_id)
+    event = Event.objects.select_related('queue', 'deadline').get(pk=event_id)
     group = TelegramGroup.objects.get(pk=event.group_id)
     try:
         getattr(event, "queue")
@@ -48,7 +48,7 @@ async def get_users(client: TelegramClient, group_id, bot_id):
     async for user in client.iter_participants(group_id):
         if user.id != bot_id:
             users.append({'id': user.id, 'full_name': (user.first_name if user.first_name is not None else "")
-                                                      + " " + (user.last_name if user.last_name is not None else "")})
+                                                      + (" " + user.last_name if user.last_name is not None else "")})
     return users
 
 

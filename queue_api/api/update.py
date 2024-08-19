@@ -16,7 +16,8 @@ async def update_message_id(event_id: int, message_id: int, chat_id: int):
 
 
 async def update_started(tg_id: int, full_name: str, started: bool):
-    user, _ = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    user, _ = await TelegramUser.objects.aget_or_create(pk=tg_id)
+    user.full_name = full_name
     user.is_started = started
     await user.asave()
 

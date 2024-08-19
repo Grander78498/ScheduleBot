@@ -8,7 +8,7 @@ from .utils import print_date_diff
 
 
 async def create_queue_tasks(event_id: int, group_id: int):
-    event = await Event.objects.aget(pk=event_id)
+    event = await Event.objects.select_related('queue', 'deadline').aget(pk=event_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     time_diff = event.date - timezone.now()
     if time_diff >= timedelta(hours=2):
@@ -42,7 +42,7 @@ async def create_queue_tasks(event_id: int, group_id: int):
             getattr(event, "queue")
             message = \
                 f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} будет отправлена через {print_date_diff(timezone.now(), event.date)}"""
-        except Exception:
+        except Exception as e:
             message = \
                 f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}"""
         await asyncio.sleep(7)

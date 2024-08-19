@@ -32,7 +32,8 @@ async def add_user_to_group(group_id: int,
     else:
         group, _ = await TelegramGroup.objects.aget_or_create(tg_id=group_id, name=group_name, thread_id=thread_id)
     try:
-        user, _ = await TelegramUser.objects.aget_or_create(tg_id=user_id, full_name=user_fullname)
+        user, _ = await TelegramUser.objects.aget_or_create(tg_id=user_id)
+        user.full_name = user_fullname
         await user.groups.aadd(group, through_defaults={"is_admin": is_admin})
         await user.asave()
     except Exception as e:
@@ -46,7 +47,9 @@ async def create_queue_or_deadline(data_dict):
     creator = await TelegramUser.objects.aget(pk=creator_id)
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
-    is_queue = data_dict["event_type"] == EventType.QUEUE
+    print(data_dict['event_type'])
+    is_queue = (data_dict["event_type"] == EventType.QUEUE)
+    print(is_queue)
     if 'sec' in data_dict:
         date = datetime.strptime(
             f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
@@ -79,7 +82,8 @@ async def create_queue_or_deadline(data_dict):
 
 
 async def save_user(tg_id: int, full_name: str):
-    user, created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    user, created = await TelegramUser.objects.aget_or_create(pk=tg_id)
+    user.full_name = full_name
     user.is_started = True
     await user.asave()
 

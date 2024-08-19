@@ -152,10 +152,12 @@ async def get_queue_message_link(queue_id: int, user_id: int):
 
 
 async def get_event_type_by_id(event_id) -> EventType:
-    event = await Event.objects.aget(pk=event_id)
-    if 'queue' in dir(event):
+    event = await Event.objects.select_related('queue', 'deadline').aget(pk=event_id)
+    try:
+        getattr(event, 'queue')
         return EventType.QUEUE
-    return EventType.DEADLINE
+    except Exception:
+        return EventType.DEADLINE
 
 
 async def get_message_id(event_id: int, chat_id: int):

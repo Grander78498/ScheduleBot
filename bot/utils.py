@@ -218,12 +218,14 @@ async def send_ready(event_id, thread_id, group_id):
         builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=event_id))
         builder.adjust(1)
         _, message, _ = await api.print_queue(event_id, False, bot)
+        mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
+                                      reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
+        await api.update_message_id(event_id, mess.message_id, group_id)
     else:
         message = await api.print_deadline(event_id)
         await api.delete_deadline(event_id)
-    mess = await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
-                                  reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    await api.update_message_id(event_id, mess.message_id, group_id)
+        await bot.send_message(text=message, chat_id=group_id, message_thread_id=thread_id,
+                                      reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
 
 
 async def update_deadline_info(res, user_id, message_id):

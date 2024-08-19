@@ -18,7 +18,8 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
         queue = await Queue.objects.aget(pk=queue_id)
     except:
         return {"error": "Да ты бы ещё за хлебом 2к10 года пошёл, срарый пердед"}
-    user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id, full_name=full_name)
+    user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id)
+    user.full_name = full_name
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
     if user_created:
         return {"started": False}
