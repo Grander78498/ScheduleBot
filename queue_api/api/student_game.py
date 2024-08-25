@@ -46,7 +46,7 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
         elif already_played(timezone.now(), student.date):
             text = f"Пары сегодня закончились, приходите завтра. Ваш рейтинг равен {student.rating}, стипендия составляет {student.scholarship} р."
         else:
-            mu, sigma = 0, DAY_MAX / 3 - 1
+            mu, sigma = 10, DAY_MAX / 3 - 1
             delta = norm_distr(mu, sigma)
             student.rating = round(student.rating + delta, 1)
             await student.asave()
