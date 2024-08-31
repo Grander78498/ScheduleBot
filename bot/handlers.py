@@ -999,9 +999,15 @@ async def bot_delete_from_group(message: types.Message):
 @router.message(Command('help'))
 async def help_command(message: types.Message):
     if message.chat.type == 'private':
-        await message.answer("Текст для помощи нуждающимся")
+        await message.answer("Если вы являетесь админом какой-либо группы, то вы можете создавать в ней очереди и дедлайны.\n"
+                             "Если вы таковым не являетесь, то вы всё равно можете просмотреть очереди, в которых вы есть,"
+                             " а также все дедлайны, созданные в группах с вашим участием.\n"
+                             "/queue - управление очередями\n/deadline - управление дедлайнами\n"
+                             "/change_tz - сменить часовой пояс")
     else:
-        await message.answer("Текст для помощи группе нуждающихся")
+        await message.answer("/change_topic - сменить тему, в которую бот будеть отправлять очереди и дедлайны\n"
+                             "Для начала игры <b>Стипендия</b> введите команду /rating",
+                             parse_mode='html')
 
 
 
