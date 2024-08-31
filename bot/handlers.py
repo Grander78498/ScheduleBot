@@ -998,13 +998,18 @@ async def bot_delete_from_group(message: types.Message):
 
 @router.message(Command('help'))
 async def help_command(message: types.Message):
-    await message.answer("Текст для помощи нуждающимся")
+    if message.chat.type == 'private':
+        await message.answer("Текст для помощи нуждающимся")
+    else:
+        await message.answer("Текст для помощи группе нуждающихся")
 
 
 
 @router.message(Command('donate'))
 async def donate_command(message: types.Message):
-    await message.answer('Если вы желаете помочь нуждающимся студентам из Африки, то можете отправить денежную помощь на эти карточки:\n'
-                         '<code>2200700731711494</code> - Тинькофф\n'
-                         '<code>2202205071855735</code> - Сбер')
+    if message.chat.type == 'private':
+        await message.answer('Если вы желаете помочь нуждающимся студентам из Африки, то можете отправить денежную помощь на эти карточки:\n'
+                            '<code>2200700731711494</code> - Тинькофф\n'
+                            '<code>2202205071855735</code> - Сбер',
+                            parse_mode='html')
     
