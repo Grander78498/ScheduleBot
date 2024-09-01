@@ -121,7 +121,10 @@ async def cmd_start(message: types.Message, command: CommandObject) -> None:
             builder_add.adjust(1)
             await api.save_user(message.chat.id, message.from_user.full_name)
             await message.answer(
-                "Изначально часовой пояс задан 0 по Москве и 3 по Гринвичу.\n  Для его замены наберите команду /change_tz \nФункционал бота \nУправление очередями /queue \nУправление дедлайнами /deadline",
+                "Приветствую!\nС помощью данного бота можно удобно создавать очереди и дедлайны, чтобы было легче справляться со студенческими трудностями\n"
+                "/queue - для управления очередями\n"
+                "/deadline - для управления дедлайнами\n"
+                "/help - для вывода краткой помощи",
                 reply_markup=builder_add.as_markup())
     elif message.chat.type == "supergroup":
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
@@ -1003,10 +1006,15 @@ async def help_command(message: types.Message):
                              "Если вы таковым не являетесь, то вы всё равно можете просмотреть очереди, в которых вы есть,"
                              " а также все дедлайны, созданные в группах с вашим участием.\n"
                              "/queue - управление очередями\n/deadline - управление дедлайнами\n"
-                             "/change_tz - сменить часовой пояс")
+                             "/change_tz - сменить часовой пояс\n"
+                             "/")
     else:
         await message.answer("/change_topic - сменить тему, в которую бот будеть отправлять очереди и дедлайны\n"
-                             "Для начала игры <b>Стипендия</b> введите команду /rating",
+                             "/set_main_admin - сменить главного админа (доступно только главному админу)\n"
+                             "Для начала игры <b>Стипендия</b> введите команду /rating\n"
+                             "/top_stipa - вывести топ-10 с самой высокой стипендией\n"
+                             "/top_rating - вывести топ-10 с самым высоким рейтингом\n"
+                             "/my_place - вывести своё место в топах по стипендии и по рейтингу",
                              parse_mode='html')
 
 
