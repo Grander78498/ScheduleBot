@@ -24,13 +24,13 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
     if group_created:
         student_group.thread_id = thread_id
         first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                                        hour=0, minute=0)
+                                                                        hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=first_crontab,
                                                   name=f'{group_id} begin',
                                                   task='session_begin',
                                                   args=json.dumps([group_id, thread_id]))
         second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now() + timedelta(days=1)).strftime('%A').lower(),
-                                                                         hour=0, minute=0)
+                                                                         hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=second_crontab,
                                                   name=f'{group_id} end',
                                                   task='session_end',
