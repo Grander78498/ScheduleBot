@@ -51,9 +51,9 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
             student.rating = round(student.rating + delta, 1)
             await student.asave()
             if delta < 0:
-                text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Ваш рейтинг уменьшился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
             else:
-                text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Ваш рейтинг увеличился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
     return text
 
 

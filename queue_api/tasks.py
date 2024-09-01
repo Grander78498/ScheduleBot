@@ -75,6 +75,7 @@ def task_session_begin(group_id: int, thread_id: int):
 @shared_task(name='session_end')
 def task_session_end(group_id: int, thread_id: int):
     student_group = StudentGroup.objects.get(pk=group_id)
-    student_group.is_session = False
-    student_group.save()
-    celery_event_loop.run_until_complete(session_end(group_id, thread_id))
+    if student_group.is_session:
+        student_group.is_session = False
+        student_group.save()
+        celery_event_loop.run_until_complete(session_end(group_id, thread_id))
