@@ -936,6 +936,7 @@ async def print_mes(message: Message, state: FSMContext):
             else:
                 await api.set_main_admin(message.chat.id, new_main_admin_id,
                                          message.chat.title, message.message_thread_id)
+                await message.answer('Главный админ был успешно сменён!')
                 await state.clear()
 
 
