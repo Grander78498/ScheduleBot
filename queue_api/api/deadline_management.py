@@ -33,7 +33,7 @@ async def delete_deadline(deadline_id: int):
     try:
         message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
     except Exception:
-        pass
+        message_id = None
     group_id = deadline.group_id
     async for task in tasks:
         await task.adelete()
