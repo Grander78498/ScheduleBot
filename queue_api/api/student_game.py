@@ -5,7 +5,7 @@ DAY_MAX = 30
 
 
 def already_played(date1: datetime, date2: datetime):
-    return date1.day == date2.day
+    return (date1 + timedelta(hours=3)).day == (date2 + timedelta(hours=3)).day
 
 
 def check_session_time(date1: datetime, date2: datetime):
@@ -23,13 +23,13 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
     student_group, group_created = await StudentGroup.objects.aget_or_create(group_id=group_id)
     if group_created:
         student_group.thread_id = thread_id
-        first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
+        first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now() - timedelta(days=1)).strftime('%A').lower(),
                                                                         hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=first_crontab,
                                                   name=f'{group_id} begin',
                                                   task='session_begin',
                                                   args=json.dumps([group_id, thread_id]))
-        second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now() + timedelta(days=1)).strftime('%A').lower(),
+        second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now()).strftime('%A').lower(),
                                                                          hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=second_crontab,
                                                   name=f'{group_id} end',
@@ -67,7 +67,7 @@ async def change_scholarship(user_id: int, group_id: int):
     if not is_created and already_played(timezone.now(), student.date):
         text = f'Сессия для тебя уже закончилась, иди бухай'
     elif is_created:
-        text = f'Молодец, впервые на сессию пришёл в вуз! Твоя стипендия составляет {student.scholarship} р. Рейтинг равен {student.rating}'
+        text = f'Молодец, впервые на сессию пришёл в вуз! Твоя стипендия составляет {student.scholarship: .1f} р. Рейтинг равен {student.rating}'
     else:
         rating = student.rating
         prev_rating = student.prev_rating
@@ -78,7 +78,7 @@ async def change_scholarship(user_id: int, group_id: int):
         delta_scholarship = norm_distr(mu, delta)
         if delta_rating <= 0:
             student.scholarship = student.scholarship - delta_scholarship
-            text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship} р. Рейтинг обнулён"
+            text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship: .1f} р. Рейтинг обнулён"
         else:
             student.scholarship = student.scholarship + delta_scholarship
             text = f"Стипендия увеличилась! Она стала равной {student.scholarship} р. Рейтинг обнулён"
