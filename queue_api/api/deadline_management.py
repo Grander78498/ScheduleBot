@@ -30,7 +30,10 @@ async def delete_deadline(deadline_id: int):
     deadline = await Deadline.objects.select_related('group').aget(pk=deadline_id)
     tasks = PeriodicTask.objects.filter(name__in=[f"{deadline.text} {deadline.pk} {deadline.group.name}",
                                                   f"Ready {deadline.text} {deadline.pk} {deadline.group.name}"])
-    message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
+    try:
+        message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
+    except Exception:
+        pass
     group_id = deadline.group_id
     async for task in tasks:
         await task.adelete()
