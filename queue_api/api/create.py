@@ -48,7 +48,7 @@ async def create_queue_or_deadline(data_dict):
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
     print(data_dict['event_type'])
-    is_queue = (data_dict["event_type"] == EventType.QUEUE)
+    is_queue = (data_dict["event_type"] != EventType.QUEUE)
     print(is_queue)
     if 'sec' in data_dict:
         date = datetime.strptime(

@@ -42,9 +42,9 @@ async def echo(message: Message, state: FSMContext, bot: Bot) -> None:
                     await putInDb(message, state)
         elif st == Event.tz:
             res = await api.change_tz(message.chat.id, message.text)
-            if res["status"] == "OK":
-                await state.clear()
-            await message.answer(res["message"])
+            # if res["status"] == "OK":
+            #     await state.clear()
+            await message.answer("Часовой пояс введён неверно, введите ещё раз")
         elif st == Deadline.renameDeadline:
             res = api.check_text(message.text, 47)
             if res['status'] == 'OK':

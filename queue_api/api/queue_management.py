@@ -55,9 +55,9 @@ async def print_queue(queue_id: int, private: bool, bot: Bot):
                 res_string += "\n"
 
     message_list = [message.message_id async for message in queue.message_set.all()]
-    wrong_symbols = './()=_-<>'
-    for symbol in wrong_symbols:
-        res_string = res_string.replace(symbol, f"\\{symbol}")
+    # wrong_symbols = './()=_-<>'
+    # for symbol in wrong_symbols:
+    #     res_string = res_string.replace(symbol, f"\\{symbol}")
     return queue.group_id, res_string, message_list
 
 
@@ -83,9 +83,9 @@ async def print_private_queue(queue_id: int, user_id: int, bot: Bot):
             res_string += "............."
             dots_added = True
     message_list = [message.message_id async for message in queue.message_set.all()]
-    wrong_symbols = './()=_-><'
-    for symbol in wrong_symbols:
-        res_string = res_string.replace(symbol, f"\\{symbol}")
+    # wrong_symbols = './()=_-><'
+    # for symbol in wrong_symbols:
+    #     res_string = res_string.replace(symbol, f"\\{symbol}")
     return queue.group_id, res_string, message_list
 
 

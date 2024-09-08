@@ -700,8 +700,9 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
 async def Day(call: CallbackQuery, callback_data: DayCallback, state: FSMContext):
     if call.message.chat.type == "private":
         await state.update_data(day=callback_data.day)
-        await state.set_state(Event.hm)
-        await call.message.answer("Введите время в формате ЧЧ:ММ")
+        await state.set_state(Calendar.year)
+        await custom_time(call, state)
+        # await call.message.answer("Введите время в формате ЧЧ:ММ")
         await call.answer()
 
 
@@ -1020,7 +1021,7 @@ async def help_command(message: types.Message):
 
 
 
-@router.message(Command('donate'))
+@router.message(Command('/donate'))
 async def donate_command(message: types.Message):
     if message.chat.type == 'private':
         await message.answer('Если вы желаете помочь нуждающимся студентам из Африки, то можете отправить денежную помощь на эти карточки:\n'
