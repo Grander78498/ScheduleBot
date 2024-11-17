@@ -4,7 +4,7 @@
 
 
 from .imports import *
-from .utils import check_timezone, print_date_diff
+from .utils import check_timezone
 from .deadline_management import print_deadline_message
 
 
@@ -49,7 +49,7 @@ async def update_deadline_text(deadline_status_id: int, deadline_text: str):
         return {"status": 'ERROR', 'message': 'Ну и зачем вводить то же самое название?'}
     deadline.text = deadline_text
     message_id = (await Message.objects.filter(event_id=deadline.pk).afirst()).message_id
-    text = print_deadline_message(deadline_text, print_date_diff(timezone.now(), deadline.date))
+    text = print_deadline_message(deadline_text, deadline.date.strftime('%d/%m/%Y, %H:%M:%S'))
     chat_id = deadline.group_id
     await deadline.asave()
     return {"status": 'OK', "data": (message_id, text, chat_id)}

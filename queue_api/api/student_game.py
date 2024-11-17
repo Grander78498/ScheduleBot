@@ -67,7 +67,7 @@ async def change_scholarship(user_id: int, group_id: int):
     if not is_created and already_played(timezone.now(), student.date):
         text = f'Сессия для тебя уже закончилась, иди бухай'
     elif is_created:
-        text = f'Молодец, впервые на сессию пришёл в вуз! Твоя стипендия составляет {student.scholarship} р. Рейтинг равен {student.rating}'
+        text = f'Молодец, впервые на сессию пришёл в вуз! Твоя стипендия составляет {student.scholarship: .2f} р. Рейтинг равен {student.rating}'
     else:
         rating = student.rating
         prev_rating = student.prev_rating
@@ -78,10 +78,10 @@ async def change_scholarship(user_id: int, group_id: int):
         delta_scholarship = norm_distr(mu, delta)
         if delta_rating <= 0:
             student.scholarship = student.scholarship - delta_scholarship
-            text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship} р. Рейтинг обнулён"
+            text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship: .2f} р. Рейтинг обнулён"
         else:
             student.scholarship = student.scholarship + delta_scholarship
-            text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship} р. Рейтинг обнулён"
+            text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship: .2f} р. Рейтинг обнулён"
         student.scholarship = round(student.scholarship, 1)
         student.rating = 0
         await student.asave()

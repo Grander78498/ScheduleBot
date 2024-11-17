@@ -1,6 +1,5 @@
 from celery import shared_task
 from django.utils import timezone
-from queue_api.api import print_date_diff
 from telethon import TelegramClient
 from bot import send_ready, send_notification, render_queue, edit_request_message, session_begin, session_end
 import asyncio
@@ -24,10 +23,10 @@ def task_send_notif(event_id):
     try:
         getattr(event, "queue")
         message = \
-            f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} станет активна через {print_date_diff(timezone.now(), event.date)}"""
+            f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} станет активна через {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
     except Exception:
         message = \
-            f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {print_date_diff(timezone.now(), event.date)}"""
+            f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
     celery_event_loop.run_until_complete(send_notification(event.id, group.thread_id, group.tg_id, message))
 
 
