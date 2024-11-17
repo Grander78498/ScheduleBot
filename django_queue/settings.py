@@ -1,8 +1,6 @@
 from pathlib import Path
 import os
 
-from config import config
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-tnw%a1u3-b$l5og%+$q4*(62@7l#b9^^$9=8(48b74n71fq&*u'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True 
+DEBUG = int(os.environ.get('DEBUG', True))
 
 ALLOWED_HOSTS = ['127.0.0.1']
 
@@ -69,11 +67,11 @@ WSGI_APPLICATION = 'django_queue.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config.dbname,
-        'HOST': config.host,
-        'PORT': config.port,
-        'USER': config.user,
-        'PASSWORD': config.password
+        'NAME': os.environ.get('DB_NAME', 'project_db'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': int(os.environ.get('DB_PORT', '5432')),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres')
     }
 }
 
@@ -122,7 +120,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Rabbit and celery settings
 
-CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER', 'redis://localhost:6379')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BACKEND', 'redis://localhost:6379')
 CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 3600}
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
@@ -130,4 +129,3 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379'

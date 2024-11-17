@@ -686,7 +686,6 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 
 @router.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    await queue_return(call.from_user.id, callback_data.messageID)
     chat_list, message_list = await api.delete_queue(callback_data.queueID)
     for chat_id, message_id in zip(chat_list, message_list):
         try:
@@ -694,6 +693,7 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
         except Exception:
             await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text='Очередь больше не активна')
     await call.answer("Очередь удалена")
+    await queue_return(call.from_user.id, callback_data.messageID)
 
 
 @router.callback_query(DayCallback.filter(F.day != 0))

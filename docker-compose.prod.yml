@@ -5,10 +5,10 @@ services:
     command: python3 manage.py runbot
     volumes:
       - .:/app/
-    env_file: .env
+    env_file: .env.prod
     environment:
       - DEBUG=0
-      - DB_HOST=pgdb
+      - PG_HOST=pgdb
       - CELERY_BROKER=redis://redis:6379
       - CELERY_BACKEND=redis://redis:6379
     depends_on:
@@ -18,7 +18,7 @@ services:
         condition: service_started
 
   postgres:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     environment:
       - POSTGRES_DB=project_db
       - POSTGRES_USER=postgres
@@ -39,10 +39,10 @@ services:
     pull_policy: never
     command: python3 -m celery --app=django_queue beat --loglevel=info
     volumes:
-      - .:/app
+      - ./project:/app
     env_file: .env
     environment:
-      - DB_HOST=pgdb
+      - PG_HOST=pgdb
       - CELERY_BROKER=redis://redis:6379
       - CELERY_BACKEND=redis://redis:6379
     depends_on:
@@ -56,10 +56,10 @@ services:
     pull_policy: never
     command: python3 -m celery --app=django_queue worker --loglevel=info
     volumes:
-      - .:/app
+      - ./project:/app
     env_file: .env
     environment:
-      - DB_HOST=pgdb
+      - PG_HOST=pgdb
       - CELERY_BROKER=redis://redis:6379
       - CELERY_BACKEND=redis://redis:6379
     depends_on:
@@ -71,5 +71,17 @@ services:
   redis:
     image: redis:7-alpine
 
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/staticfiles
+      - media_volume:/mediafiles
+    ports:
+      - 1337:80
+    depends_on:
+      - web
+
 volumes:
   pgdbdata:
+  static_volume:
+  media_volume:

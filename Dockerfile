@@ -1,9 +1,13 @@
-FROM python:3.10
+FROM python:3.12
 
-COPY src/ src/
-COPY main.py /
-COPY requirements.txt /
+WORKDIR /app
 
-RUN pip install -r requirements.txt
+COPY requirements.txt /app/
+RUN pip3 install -r requirements.txt
 
-CMD ["python3", "main.py"]
+COPY bot .
+COPY django_queue .
+COPY queue_api .
+COPY entrypoint.sh /app/entrypoint.sh
+
+ENTRYPOINT [ "/app/entrypoint.sh" ]

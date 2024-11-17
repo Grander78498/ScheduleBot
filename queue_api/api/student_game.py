@@ -81,7 +81,7 @@ async def change_scholarship(user_id: int, group_id: int):
             text = f"Схлопотал двоек на сессии, теперь страдай без стипендии! Она стала равной {student.scholarship: .2f} р. Рейтинг обнулён"
         else:
             student.scholarship = student.scholarship + delta_scholarship
-            text = f"Всем преподавателям угодил, стипендия увеличилась! Она стала равной {student.scholarship: .2f} р. Рейтинг обнулён"
+            text = f"Стипендия увеличилась! Она стала равной {student.scholarship: .2f} р. Рейтинг обнулён"
         student.scholarship = round(student.scholarship, 1)
         student.rating = 0
         await student.asave()
