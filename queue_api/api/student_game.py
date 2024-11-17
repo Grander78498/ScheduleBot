@@ -5,7 +5,7 @@ DAY_MAX = 30
 
 
 def already_played(date1: datetime, date2: datetime):
-    return date1.day == date2.day
+    return (date1 + timedelta(hours=3)).day == (date2 + timedelta(hours=3)).day
 
 
 def check_session_time(date1: datetime, date2: datetime):
@@ -23,14 +23,14 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
     student_group, group_created = await StudentGroup.objects.aget_or_create(group_id=group_id)
     if group_created:
         student_group.thread_id = thread_id
-        first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=timezone.now().strftime('%A').lower(),
-                                                                        hour=0, minute=0)
+        first_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now() - timedelta(days=1)).strftime('%A').lower(),
+                                                                        hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=first_crontab,
                                                   name=f'{group_id} begin',
                                                   task='session_begin',
                                                   args=json.dumps([group_id, thread_id]))
-        second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now() + timedelta(days=1)).strftime('%A').lower(),
-                                                                         hour=0, minute=0)
+        second_crontab, _ = await CrontabSchedule.objects.aget_or_create(day_of_week=(timezone.now()).strftime('%A').lower(),
+                                                                         hour=21, minute=0)
         await PeriodicTask.objects.aget_or_create(crontab=second_crontab,
                                                   name=f'{group_id} end',
                                                   task='session_end',
@@ -51,9 +51,9 @@ async def change_rating(user_id: int, group_id: int, thread_id: int):
             student.rating = round(student.rating + delta, 1)
             await student.asave()
             if delta < 0:
-                text = f"Схватил двойку по типовику Дзержа - ЛОХ хаххахахаха.\nВаш рейтинг уменьшился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Ваш рейтинг уменьшился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
             else:
-                text = f"Насосал, получается)))))\nВаш рейтинг увеличился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
+                text = f"Ваш рейтинг увеличился на {delta: .1f} единиц и стал равен {student.rating}\nСтипендия составляет {student.scholarship} р."
     return text
 
 

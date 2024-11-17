@@ -202,7 +202,6 @@ async def render_queue(queue_id: int, private: bool):
 
 async def send_notification(queue_id, thread_id, group_id, message):
     mess_id = await api.get_message_id(queue_id, group_id)
-    await bot.delete_message(chat_id=group_id, message_id=mess_id)
     a = await bot.send_message(chat_id=group_id, text=message, message_thread_id=thread_id)
     await api.update_message_id(queue_id, a.message_id, group_id)
 
@@ -210,7 +209,10 @@ async def send_notification(queue_id, thread_id, group_id, message):
 async def send_ready(event_id, thread_id, group_id):
     builder = InlineKeyboardBuilder()
     queue_message_id = await api.get_message_id(event_id, group_id)
-    await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
+    try:
+        await bot.delete_message(chat_id=group_id, message_id=queue_message_id)
+    except Exception:
+        pass
     event_type = await api.get_event_type_by_id(event_id)
     if event_type == EventType.QUEUE:
         builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=event_id))
@@ -292,14 +294,14 @@ async def cmd_startgroup(message: types.Message) -> None:
             from queue_api.tasks import task_get_users
             result = task_get_users.delay(message.chat.id, (await bot.get_me()).id)
             await message.answer(
-                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
+                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту.\n/help - для вывода дополнительных команд")
             users = result.get()
             for user in users:
                 await api.add_user_to_group(message.chat.id, user['id'], user['full_name'],
                                             False, message.chat.title, message.message_thread_id)
         else:
             await message.answer(
-                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту. Если хотите сменить тему, в которой будет писать бот, то нажмите \n /change_topic")
+                "Здравствуйте, уважаемые пользователи! Для того, чтобы создать очередь, админ группы должен написать в личное сообщение боту.\n/help - для вывода дополнительных команд")
 
 
 async def get_bot_name():
