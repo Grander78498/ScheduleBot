@@ -10,7 +10,7 @@ migrate: reqs queue_api/models.py
 	$(PYTHON_EXEC) manage.py migrate
 
 debug: migrate
-	$(PYTHON_EXEC) manage.py runbot --settings=django_queue.settings
+	$(PYTHON_EXEC) manage.py runbot
 
 celery: migrate
 	sudo systemctl start redis
@@ -18,4 +18,4 @@ celery: migrate
 	$(ENV_DIR)/celery -A django_queue worker -l info &
 
 prod: celery
-	$(PYTHON_EXEC) manage.py runbot --settings=django_queue.prod_settings
+	$(PYTHON_EXEC) manage.py runbot

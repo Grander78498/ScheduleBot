@@ -17,7 +17,7 @@ async def add_user_to_queue(queue_id: int, tg_id: int, full_name: str):
     try:
         queue = await Queue.objects.aget(pk=queue_id)
     except:
-        return {"error": "Да ты бы ещё за хлебом 2к10 года пошёл, срарый пердед"}
+        return {"error": "Вы не можете добавиться в эту очередь, поскольку она удалена"}
     user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id)
     user.full_name = full_name
     _, created = await QueueMember.objects.aget_or_create(user=user, queue=queue)
@@ -145,7 +145,7 @@ async def get_all_queues(user_id: int, offset: int, for_swap: bool):
     else:
         has_next = True
     if len(queue_list) == 0:
-        return {"status": 404, "message": 'У вас нет очередей('}
+        return {"status": 404, "message": 'У вас нет очередей'}
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(queue_list, 1):
         res += str(index + offset) + '. '
@@ -197,8 +197,8 @@ async def check_event_count(user_id: int, event_type: EventType):
 
 
 def print_queue_message(text, date, notif_date):
-    return "Очередь {} будет создана через {}.".format(text, date) + \
-            (" За {} до этого будет отправлено напоминание".format(notif_date)
+    return "Очередь {} будет создана {}.".format(text, date) + \
+            (" Напоминание будет отправлено {}".format(notif_date)
              if notif_date != "" else "")
 
 

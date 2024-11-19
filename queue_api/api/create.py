@@ -4,7 +4,7 @@
 
 
 from .imports import *
-from .utils import print_date_diff, EventType
+from .utils import EventType
 
 
 async def add_admin(group_id: int, admins: list[int], bot_id: int, names: list[str], group_name: str, thread_id: int):
@@ -47,9 +47,7 @@ async def create_queue_or_deadline(data_dict):
     creator = await TelegramUser.objects.aget(pk=creator_id)
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
-    print(data_dict['event_type'])
     is_queue = (data_dict["event_type"] == EventType.QUEUE)
-    print(is_queue)
     if 'sec' in data_dict:
         date = datetime.strptime(
             f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
@@ -70,7 +68,7 @@ async def create_queue_or_deadline(data_dict):
     time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-                print_date_diff(timezone.now(), date), event_id, "")
+                date.strftime('%d/%m/%Y, %H:%M:%S'), event_id, "")
 
     if time_diff >= timedelta(hours=2):
         queue_notif_date = date - timedelta(hours=1)
@@ -78,7 +76,7 @@ async def create_queue_or_deadline(data_dict):
         queue_notif_date = date - 0.5 * time_diff
 
     return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,
-            print_date_diff(timezone.now(), date), event_id, print_date_diff(queue_notif_date, date))
+            date.strftime('%d/%m/%Y, %H:%M:%S'), event_id, queue_notif_date.strftime('%d/%m/%Y, %H:%M:%S'))
 
 
 async def save_user(tg_id: int, full_name: str):

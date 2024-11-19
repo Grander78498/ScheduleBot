@@ -1,5 +1,5 @@
 from .imports import *
-from .utils import print_date_diff, OFFSET
+from .utils import OFFSET
 
 
 async def get_deadline_info(deadline_id: int):
@@ -8,7 +8,7 @@ async def get_deadline_info(deadline_id: int):
     text = deadline.text
     group = await TelegramGroup.objects.aget(pk=group_id)
     thread_id = group.thread_id
-    date = print_date_diff(timezone.now(), deadline.date)
+    date = deadline.date.strftime('%d/%m/%Y, %H:%M:%S')
     time_diff = deadline.date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return group_id, text, thread_id, date, ""
@@ -18,7 +18,7 @@ async def get_deadline_info(deadline_id: int):
     else:
         queue_notif_date = deadline.date - 0.5 * time_diff
 
-    return group_id, text, thread_id, date, print_date_diff(queue_notif_date, deadline.date)
+    return group_id, text, thread_id, date, deadline.date.strftime('%d/%m/%Y, %H:%M:%S')
 
 
 async def delete_deadline_by_status(deadline_status_id: int):
@@ -73,7 +73,7 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
         deadline_list.append((deadline_status.pk, deadline_status.is_done))
 
     if len(deadline_list) == 0:
-        return {"status": 'ERROR', "message": 'У вас нет дедов('}
+        return {"status": 'ERROR', "message": 'У вас нет дедлайнов'}
     res = 'Ваши дедлайны:\n'
     for index, deadline_status in enumerate(deadline_statuses, 1):
         deadline = await Deadline.objects.aget(pk=deadline_status.deadline_id)
@@ -83,7 +83,7 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
         res += 'Название группы: ' + (group.name if len(group.name) <= 32 else group.name[:29] + '...') + '\n'
         if not for_admin:
             res += f'Статус: {":check_mark_button:" if deadline_status.is_done else ":red_exclamation_mark:"}\n'
-        my_date = print_date_diff(timezone.now(), deadline.date)
+        my_date = deadline.date.strftime('%d/%m/%Y, %H:%M:%S')
         res += 'Дедлайн произойдёт через ' + my_date + '\n'
     return {'status': "OK", 'message': res, 'deadline_list': deadline_list, "has_next": has_next}
 
@@ -112,4 +112,4 @@ async def get_deadline_name(deadline_status_id: int):
 
 
 def print_deadline_message(text, date):
-    return "Дедлайн {} наступит через {}.".format(text, date)
+    return "Дедлайн {} наступит {}.".format(text, date)

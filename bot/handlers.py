@@ -366,7 +366,7 @@ async def rename_deadline(call: CallbackQuery, callback_data: RenameDeadlineCall
 
 @router.callback_query(DeleteDeadlineCallback.filter(F.deadline_id != 0))
 async def delete_deadline(call: CallbackQuery, callback_data: DeleteDeadlineCallback):
-    mes = await call.message.answer("Дед был удалён")
+    mes = await call.message.answer("Дедлайн был удалён")
     message_id, group_id = await api.delete_deadline_by_status(callback_data.deadline_id)
     try:
         await bot.delete_message(chat_id=group_id, message_id=message_id)
@@ -458,7 +458,7 @@ async def add_deadline(call: CallbackQuery, state: FSMContext):
         else:
             groups = await api.get_user_groups(call.message.chat.id)
             if len(groups) == 0:
-                await call.answer("Вы не состоите ни в одной группе, лох")
+                await call.answer("Вы не состоите ни в одной группе")
             else:
                 builder = InlineKeyboardBuilder()
                 await state.update_data(event_type=EventType.DEADLINE)
@@ -476,7 +476,7 @@ async def deadline_status_info(call: CallbackQuery, callback_data: CanbanDesk):
     is_done = callback_data.is_done
     check = await api.check_deadline_status(callback_data.deadline_status_id)
     if not check:
-        await call.answer("О нет, дедлайн был магическим образом удалён, как же так")
+        await call.answer("Дедлайн уже удалён")
         res = await api.get_deadlines(call.from_user.id, 0, False)
         await update_deadline_info(res, call.from_user.id, callback_data.message_id)
     else:
@@ -526,7 +526,7 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
     elif status["out"]:
         await call.answer("У вас уже есть отправленный запрос, если прошло достаточно времени, вы можете его удалить")
     else:
-        await call.answer("Долбоёб, как ты это вообще сделал, админам бота пиши тварь")
+        await call.answer("Непредвиденная ошибка...")
 
 
 @router.callback_query(GroupSelectCallback.filter(F.groupID != 0))
@@ -535,7 +535,7 @@ async def groupSelected(call: CallbackQuery, callback_data: GroupSelectCallback,
     await bot.delete_message(chat_id=call.from_user.id, message_id=data['event_message_id'])
     await state.update_data(group_id=callback_data.groupID)
     await state.update_data(deadline_roots=callback_data.is_admin)
-    await call.message.answer("Напишите сообщение для добавления")
+    await call.message.answer("Напишите название очереди")
     await state.set_state(Event.text)
     await call.answer()
 
@@ -595,10 +595,6 @@ async def printQueue(call: CallbackQuery, state: FSMContext):
         await bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=r.message_id,
                                             reply_markup=builder.as_markup())
     await call.answer()
-
-
-
-
 
 
 @router.callback_query(ReturnToQueueList.filter(F.messageID != 0))
@@ -686,7 +682,6 @@ async def rename_queue(call: CallbackQuery, callback_data: RenameQueueCallback, 
 
 @router.callback_query(DeleteQueueCallback.filter(F.queueID != 0))
 async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback):
-    await queue_return(call.from_user.id, callback_data.messageID)
     chat_list, message_list = await api.delete_queue(callback_data.queueID)
     for chat_id, message_id in zip(chat_list, message_list):
         try:
@@ -694,6 +689,7 @@ async def deleted_queue(call: CallbackQuery, callback_data: DeleteQueueCallback)
         except Exception:
             await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text='Очередь больше не активна')
     await call.answer("Очередь удалена")
+    await queue_return(call.from_user.id, callback_data.messageID)
 
 
 @router.callback_query(DayCallback.filter(F.day != 0))
@@ -753,7 +749,7 @@ async def DeadlineSolution(call: CallbackQuery, callback_data: DeadLineAcceptCal
     if callback_data.solution:
         await bot.send_message(chat_id=callback_data.user_id, text="Ваш запрос выполнен")
         mes = await bot.send_message(chat_id=group_id, message_thread_id=thread_id,
-                                     text="Ваша смертная линия {} наступит через {}.".format(text, date,
+                                     text="Дедлайн {} наступит через {}.".format(text, date,
                                                                                              notif_date) +
                                           (" За {} до этого будет отправлено напоминание, чтобы успели убежать".format(
                                               notif_date)
@@ -801,10 +797,6 @@ async def Year(call: CallbackQuery, callback_data: YearCallback, state: FSMConte
                 r = await call.message.answer("Выберите месяц", reply_markup=builder.as_markup())
                 await state.update_data(RemoveMessageyear=r)
     await call.answer()
-
-
-
-
 
 
 @router.callback_query(F.data.in_(['custom']))
@@ -909,9 +901,6 @@ async def one_month(call: CallbackQuery, state: FSMContext):
     await state.set_state(Event.hm)
     await call.message.answer("Введите время в формате ЧЧ:ММ")
     await call.answer()
-
-
-
 
 
 @router.message(F.forward_from)
