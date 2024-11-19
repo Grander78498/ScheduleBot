@@ -145,7 +145,7 @@ async def get_all_queues(user_id: int, offset: int, for_swap: bool):
     else:
         has_next = True
     if len(queue_list) == 0:
-        return {"status": 404, "message": 'У вас нет очередей('}
+        return {"status": 404, "message": 'У вас нет очередей'}
     res = 'Ваши очереди:\n'
     for index, queue in enumerate(queue_list, 1):
         res += str(index + offset) + '. '

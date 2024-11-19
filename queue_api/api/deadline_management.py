@@ -73,7 +73,7 @@ async def get_deadlines(user_id: int, offset: int, for_admin: bool):
         deadline_list.append((deadline_status.pk, deadline_status.is_done))
 
     if len(deadline_list) == 0:
-        return {"status": 'ERROR', "message": 'У вас нет дедлайнов('}
+        return {"status": 'ERROR', "message": 'У вас нет дедлайнов'}
     res = 'Ваши дедлайны:\n'
     for index, deadline_status in enumerate(deadline_statuses, 1):
         deadline = await Deadline.objects.aget(pk=deadline_status.deadline_id)

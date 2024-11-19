@@ -6,6 +6,7 @@ from .models import *
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,10 +27,10 @@ def task_send_notif(event_id):
     try:
         getattr(event, "queue")
         message = \
-            f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} станет активна через {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
+            f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} станет активна через {(event.date + timedelta(hours=event.creator.tz)).strftime('%d/%m/%Y, %H:%M:%S')}"""
     except Exception:
         message = \
-            f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
+            f"""НАПОМИНАНИЕ!!!\nДо дедлайна {event.text} осталось {(event.date + timedelta(hours=event.creator.tz)).strftime('%d/%m/%Y, %H:%M:%S')}"""
     celery_event_loop.run_until_complete(send_notification(event.id, group.thread_id, group.tg_id, message))
 
 

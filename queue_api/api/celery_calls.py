@@ -7,7 +7,7 @@ from .imports import *
 
 
 async def create_queue_tasks(event_id: int, group_id: int):
-    event = await Event.objects.select_related('queue', 'deadline').aget(pk=event_id)
+    event = await Event.objects.select_related('queue', 'deadline', 'creator').aget(pk=event_id)
     group = await TelegramGroup.objects.aget(pk=group_id)
     time_diff = event.date - timezone.now()
     if time_diff >= timedelta(hours=2):
@@ -40,10 +40,10 @@ async def create_queue_tasks(event_id: int, group_id: int):
         try:
             getattr(event, "queue")
             message = \
-                f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} будет создана {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
+                f"""НАПОМИНАНИЕ!!!\nОчередь {event.text} будет создана {(event.date + timedelta(hours=event.creator.tz)).strftime('%d/%m/%Y, %H:%M:%S')}"""
         except Exception as e:
             message = \
-                f"""НАПОМИНАНИЕ!!!\nДедлайн {event.text} наступит {event.date.strftime('%d/%m/%Y, %H:%M:%S')}"""
+                f"""НАПОМИНАНИЕ!!!\nДедлайн {event.text} наступит {(event.date + timedelta(hours=event.creator.tz)).strftime('%d/%m/%Y, %H:%M:%S')}"""
         await asyncio.sleep(7)
         await send_notification(event.pk, group.thread_id, group.pk, message)
         await asyncio.sleep(3)
