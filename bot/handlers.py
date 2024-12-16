@@ -83,6 +83,23 @@ async def print_info_deadline(message: types.Message):
     await message.answer("Здравствуйте, вам доступен следующий функционал по дедлайнам\n", reply_markup=builder.as_markup())
 
 
+@router.message(Command("mary_crhi"))
+async def mary_crhistmas(message: types.Message):
+        groups = await api.check_admin(call.message.chat.id)
+        if len(groups) == 0:
+            await call.message.answer("У тебя нет групп, где ты админ, нового года не будет")
+        else:
+            builder = InlineKeyboardBuilder()
+            await state.update_data(event_type=EventType.QUEUE)
+            for group in groups:
+                builder.button(text=group.name,
+                               callback_data=GroupSelectCallback(groupID=group.tg_id, is_admin = True))
+            builder.adjust(1)
+            mes = await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+            await state.update_data(event_message_id=mes.message_id)
+
+
+
 @router.message(Command("change_topic"))
 async def change_topic(message: types.Message):
     ok = True if message.from_user.id in [i.user.id for i in
@@ -527,6 +544,14 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
         await call.answer("У вас уже есть отправленный запрос, если прошло достаточно времени, вы можете его удалить")
     else:
         await call.answer("Непредвиденная ошибка...")
+
+
+
+
+@router.callback_query(ChristmasGroupSelectCallback.filter(F.groupID != 0))
+async def christmasgroupSelected(call: CallbackQuery, callback_data: ChristmasGroupSelectCallback):
+    await call.message.answer("Новый год будет")
+    await call.answer()
 
 
 @router.callback_query(GroupSelectCallback.filter(F.groupID != 0))

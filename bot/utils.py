@@ -54,6 +54,13 @@ async def send_swap_request(message: types.Message, second_member_id: str, from_
                 "Не удалось отправить запрос - пользователь {} заблокировал бота".format(result['second_name']))
 
 
+async def send_christmas(callback_data: ChristmasGroupSelectCallback):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Сасанта", callback_data="christmas")
+    await bot.send_message(chat_id=callback_data.groupID, text="НОВЫЙ ГОД БУДЕТ", reply_markup=builder.as_markup())
+
+
+
 async def short_cut(message: types.Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     data = await state.get_data()
