@@ -11,6 +11,7 @@ from django.conf import settings
 from .bot import bot
 
 
+
 async def send_swap_request(message: types.Message, second_member_id: str, from_user_id, state: FSMContext):
     res = (await state.get_data())["swap"]
     queueID = res["queueID"]
@@ -57,7 +58,8 @@ async def send_swap_request(message: types.Message, second_member_id: str, from_
 async def send_christmas(callback_data: ChristmasGroupSelectCallback):
     builder = InlineKeyboardBuilder()
     builder.button(text="Сасанта", callback_data="christmas")
-    await bot.send_message(chat_id=callback_data.groupID, text="НОВЫЙ ГОД БУДЕТ", reply_markup=builder.as_markup())
+    builder.button(text="Не Сасанта", callback_data="no_christmas")
+    await bot.send_message(chat_id=callback_data.groupID, text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков. Количество участников сейчас 0", reply_markup=builder.as_markup())
 
 
 
