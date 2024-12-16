@@ -640,20 +640,10 @@ async def add_grinch(call: CallbackQuery):
                                     reply_markup=builder.as_markup())
     except:
         pass
-    if "error" in santa:
-        await call.answer(santa["error"])
+    if santa=='Incorrect':
+        await call.answer('Инвалид')
     else:
-        is_started = santa["started"]
-        if is_started:
-            is_queue_member = santa["santa_member"]
-            if is_queue_member:
-                await call.answer("Вы уже не в клубе")
-            else:
-                pass
-            await call.answer()
-        else:
-            await call.answer("Пожалуйста напишите боту(нажмите start)")
-    await call.answer("Вы теперь не можете дарить говно")
+        await call.answer("Вы теперь не можете дарить говно")
 
 
 
