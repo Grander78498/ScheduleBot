@@ -35,10 +35,11 @@ async def add_user_to_grinch(tg_id: int, group_id: int):
     
 
 async def get_pairs(group_id: int):
-    santa_members = await SantaMember.objects.select_related('user__full_name').aget(group_id=group_id)
-    copied_members = [member async for member in SantaMember.objects.all().order_by('?')]
-    while all(el1.user_id != el2.user_id for (el1, el2) in zip(santa_members, copied_members)):
-        copied_members = [member async for member in SantaMember.objects.all().order_by('?')]
+    santa = await Santa.objects.aget(group_id=group_id)
+    santa_members = [member async for member in SantaMember.objects.filter(santa=santa).select_related('user')]
+    copied_members = [member async for member in SantaMember.objects.filter(santa=santa).order_by('?').select_related('user')]
+    while any(el1.user_id == el2.user_id for (el1, el2) in zip(santa_members, copied_members)):
+        copied_members = [member async for member in SantaMember.objects.filter(santa=santa).order_by('?').select_related('user')]
     return [
         {
             "id1": el1.user_id,

@@ -59,7 +59,7 @@ async def send_christmas(callback_data: ChristmasGroupSelectCallback, thread_id:
     builder = InlineKeyboardBuilder()
     builder.button(text="Санта", callback_data="christmas")
     builder.button(text="Гринч", callback_data="no_christmas")
-    a = await bot.send_message(chat_id=callback_data.groupID, message_thread_id=thread_id, text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков. Количество участников сейчас 0", reply_markup=builder.as_markup())
+    a = await bot.send_message(chat_id=callback_data.groupID, message_thread_id=thread_id, text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков и не забудьте написать боту в личку (если этого не делали). Количество участников сейчас 0", reply_markup=builder.as_markup())
     await api.update_message_id(None, a.message_id,callback_data.groupID)
 
 
