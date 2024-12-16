@@ -84,6 +84,10 @@ class Deadline(Event):
     pass
 
 
+class Santa(Event):
+    is_active = models.BooleanField(default=True)
+
+
 class DeadlineRequest(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)

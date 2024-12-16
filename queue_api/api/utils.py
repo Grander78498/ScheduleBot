@@ -16,6 +16,7 @@ OFFSET = 3
 class EventType(Enum):
     QUEUE = 1
     DEADLINE = 2
+    SANTA = 3
 
 
 async def check_time(time, year, month, day, user_id):

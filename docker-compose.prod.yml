@@ -40,7 +40,7 @@ services:
     command: python3 -m celery --app=django_queue beat --loglevel=info
     volumes:
       - ./project:/app
-    env_file: .env
+    env_file: .env.prod
     environment:
       - PG_HOST=pgdb
       - CELERY_BROKER=redis://redis:6379

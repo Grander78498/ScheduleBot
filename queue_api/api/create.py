@@ -40,14 +40,13 @@ async def add_user_to_group(group_id: int,
         print(e)
 
 
-async def create_queue_or_deadline(data_dict):
+async def create_event(data_dict):
     message = data_dict['text']
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
     creator = await TelegramUser.objects.aget(pk=creator_id)
     tz = creator.tz
     tz = str(tz).rjust(2, '0') + '00'
-    is_queue = (data_dict["event_type"] == EventType.QUEUE)
     if 'sec' in data_dict:
         date = datetime.strptime(
             f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
@@ -56,15 +55,22 @@ async def create_queue_or_deadline(data_dict):
         date = datetime.strptime(f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
                                   "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
-    if is_queue:
-        queue = await Queue.objects.acreate(text=message, date=date, creator=creator, group=group)
-        event_id = queue.pk
-    else:
-        deadline = await Deadline.objects.acreate(text=message, date=date, creator=creator, group=group)
-        members = GroupMember.objects.filter(groups_id=group_id)
-        async for member in members:
-            await DeadlineStatus.objects.acreate(user_id=member.user_id, deadline_id=deadline.pk)
-        event_id = deadline.pk
+    match data_dict['event_type']:
+        case EventType.QUEUE:
+            queue = await Queue.objects.acreate(text=message, date=date, creator=creator, group=group)
+            event_id = queue.pk
+        case EventType.DEADLINE:
+            deadline = await Deadline.objects.acreate(text=message, date=date, creator=creator, group=group)
+            members = GroupMember.objects.filter(groups_id=group_id)
+            async for member in members:
+                await DeadlineStatus.objects.acreate(user_id=member.user_id, deadline_id=deadline.pk)
+            event_id = deadline.pk
+        case EventType.SANTA:
+            santa = await Santa.objects.acreate(text=message, date=date, creator=creator, group=group)
+            event_id = santa.pk
+        case _:
+            ...
+        
     time_diff = date - timezone.now()
     if time_diff < timedelta(minutes=2):
         return ((await TelegramGroup.objects.aget(pk=group_id)).thread_id,

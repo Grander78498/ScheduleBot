@@ -96,41 +96,46 @@ async def putInDb(message: types.Message, state: FSMContext) -> None:
     except Exception:
         print("Error")
     builder = InlineKeyboardBuilder()
-    if data["event_type"] == EventType.QUEUE:
-        thread_id, date, queue_id, notif_date = await api.create_queue_or_deadline(data)
-        builder.button(text="Создать очередь", callback_data="add_queue")
-        builder.button(text="Вывести существующие очереди", callback_data="print_queue")
-        builder.button(text="Запросить перемещение в очереди", callback_data="swap")
-        builder.adjust(1)
-        await message.answer("Очередь была создана", reply_markup=builder.as_markup())
-        mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                     text=api.print_queue_message(data['text'], date, notif_date))
-        await api.update_message_id(queue_id, mes.message_id, data['group_id'])
-        await api.create_queue_tasks(queue_id, data["group_id"])
-    else:
-        builder.button(text="Создать напоминание", callback_data="add_deadline")
-        builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
-        builder.adjust(1)
-        thread_id, date, deadline_id, notif_date = await api.create_queue_or_deadline(data)
-        if data["deadline_roots"]:
-            await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
+    match data['event_type']:
+        case EventType.QUEUE:
+            thread_id, date, queue_id, notif_date = await api.create_event(data)
+            builder.button(text="Создать очередь", callback_data="add_queue")
+            builder.button(text="Вывести существующие очереди", callback_data="print_queue")
+            builder.button(text="Запросить перемещение в очереди", callback_data="swap")
+            builder.adjust(1)
+            await message.answer("Очередь была создана", reply_markup=builder.as_markup())
             mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
-                                         text=api.print_deadline_message(data['text'], date))
-            await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
-            await api.create_queue_tasks(deadline_id, data["group_id"])
-        else:
-            res = await api.create_deadline_request(message.from_user.id, data['group_id'])
-            if res['status'] == 'ERROR':
-                await message.answer(res['message'])
+                                        text=api.print_queue_message(data['text'], date, notif_date))
+            await api.update_message_id(queue_id, mes.message_id, data['group_id'])
+            await api.create_queue_tasks(queue_id, data["group_id"])
+        case EventType.DEADLINE:
+            builder.button(text="Создать напоминание", callback_data="add_deadline")
+            builder.button(text="Вывести существующие напоминания", callback_data="print_deadline")
+            builder.adjust(1)
+            thread_id, date, deadline_id, notif_date = await api.create_event(data)
+            if data["deadline_roots"]:
+                await message.answer("Дедлайн создан", reply_markup=builder.as_markup())
+                mes = await bot.send_message(chat_id=data['group_id'], message_thread_id=thread_id,
+                                            text=api.print_deadline_message(data['text'], date))
+                await api.update_message_id(deadline_id, mes.message_id, data['group_id'])
+                await api.create_queue_tasks(deadline_id, data["group_id"])
             else:
-                await message.answer("Так как вы не являетесь админом этой группы, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
-                admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
-                builder_admin = InlineKeyboardBuilder()
-                m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
-                builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
-                builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
-                await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
-                                                    reply_markup=builder_admin.as_markup())
+                res = await api.create_deadline_request(message.from_user.id, data['group_id'])
+                if res['status'] == 'ERROR':
+                    await message.answer(res['message'])
+                else:
+                    await message.answer("Так как вы не являетесь админом этой группы, запрос послан одному из админов. Ожидайте его решения",reply_markup=builder.as_markup())
+                    admin_id, admin_full_name = await api.get_group_admin(data['group_id'])
+                    builder_admin = InlineKeyboardBuilder()
+                    m = await bot.send_message(chat_id=admin_id, text="Пользователь {} отправил вам ({}) дедлайн {} в группе {}".format(message.from_user.full_name, admin_full_name, data["text"], (await api.get_group_name(data["group_id"]))))
+                    builder_admin.button(text="Отклонить", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=False, message_id=m.message_id))
+                    builder_admin.button(text="Принять", callback_data=DeadLineAcceptCallback(deadline_id=deadline_id, user_id=message.from_user.id, solution=True, message_id=m.message_id))
+                    await bot.edit_message_reply_markup(chat_id=admin_id, message_id=m.message_id,
+                                                        reply_markup=builder_admin.as_markup())
+        case EventType.SANTA:
+            pass
+        case _:
+            ...
 
 
 async def deadline_list_return(user_id, messageID):
@@ -193,18 +198,19 @@ async def queue_return(user_id, messageID):
 
 
 async def render_queue(queue_id: int, private: bool):
-    try:
-        group_id, queue, message_list = await api.print_queue(queue_id, private, bot)
-        builder = InlineKeyboardBuilder()
-        builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
-        builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
-        builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
-        builder.adjust(1)
-        for queue_message_id in message_list:
+    group_id, queue, message_list = await api.print_queue(queue_id, private, bot)
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Встать в очередь", callback_data=QueueIDCallback(queueID=queue_id))
+    builder.button(text="Выйти из очереди", callback_data=RemoveMyself(queueID=queue_id))
+    builder.button(text="Узнать свою позицию в очереди", callback_data=FindMyself(queueID=queue_id))
+    builder.adjust(1)
+    for queue_message_id in message_list:
+        try:
             await bot.edit_message_text(text=queue, chat_id=group_id, message_id=queue_message_id,
                                         reply_markup=builder.as_markup(), parse_mode='MarkdownV2')
-    except Exception as ex:
-        print(ex)
+        except Exception as ex:
+            print(ex)
+            print(f"Group id: {group_id}; message_id={queue_message_id}")
 
 
 async def send_notification(queue_id, thread_id, group_id, message):

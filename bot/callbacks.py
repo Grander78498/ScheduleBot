@@ -25,7 +25,7 @@ class GroupSelectCallback(CallbackData, prefix="selectGroup"):
     groupID: int
     is_admin: bool
 
-class CheistmasGroupSelectCallback(CallbackData, prefix="chselectGroup"):
+class ChristmasGroupSelectCallback(CallbackData, prefix="chselectGroup"):
     groupID: int
     is_admin: bool
 
