@@ -84,10 +84,10 @@ async def print_info_deadline(message: types.Message):
 
 
 @router.message(Command("mary_crhi"))
-async def mary_crhistmas(message: types.Message, call: CallbackQuery, state: FSMContext):
-    groups = await api.check_admin(call.message.chat.id)
+async def mary_crhistmas(message: types.Message, state: FSMContext):
+    groups = await api.check_admin(message.chat.id)
     if len(groups) == 0:
-        await call.message.answer("У тебя нет групп, где ты админ, нового года не будет")
+        await message.answer("У тебя нет групп, где ты админ, нового года не будет")
     else:
         builder = InlineKeyboardBuilder()
         await state.update_data(event_type=EventType.SANTA)
@@ -95,7 +95,7 @@ async def mary_crhistmas(message: types.Message, call: CallbackQuery, state: FSM
             builder.button(text=group.name,
                             callback_data=ChristmasGroupSelectCallback(groupID=group.tg_id, is_admin = True))
         builder.adjust(1)
-        mes = await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+        mes = await message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
         await state.update_data(event_message_id=mes.message_id)
 
 

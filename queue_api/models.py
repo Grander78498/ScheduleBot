@@ -88,6 +88,11 @@ class Santa(Event):
     is_active = models.BooleanField(default=True)
 
 
+class SantaMember(models.Model):
+    user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
+    santa = models.ForeignKey('Santa', on_delete=models.CASCADE)
+
+
 class DeadlineRequest(models.Model):
     user = models.ForeignKey('TelegramUser', on_delete=models.CASCADE)
     group = models.ForeignKey('TelegramGroup', on_delete=models.CASCADE)
