@@ -655,7 +655,7 @@ async def add_santa(call: CallbackQuery):
             await call.answer()
         else:
             call.answer("Пожалуйста напишите боту(нажмите start)")
-    await call.answer("Вы теперь можете дарить говно")
+    await call.answer("Вы теперь можете дарить говно", show_alert=False)
 
 @router.callback_query(F.data.in_(['no_christmas']))
 async def add_grinch(call: CallbackQuery):
