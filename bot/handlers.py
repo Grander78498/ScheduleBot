@@ -87,7 +87,7 @@ async def print_info_deadline(message: types.Message):
 async def mary_crhistmas(message: types.Message, state: FSMContext):
     groups = await api.check_admin(message.chat.id)
     if len(groups) == 0:
-        await message.answer("У тебя нет групп, где ты админ, нового года не будет")
+        await call.message.answer("У тебя нет групп, где ты админ, нового года не будет")
     else:
         builder = InlineKeyboardBuilder()
         await state.update_data(event_type=EventType.SANTA)
@@ -95,7 +95,7 @@ async def mary_crhistmas(message: types.Message, state: FSMContext):
             builder.button(text=group.name,
                             callback_data=ChristmasGroupSelectCallback(groupID=group.tg_id, is_admin = True))
         builder.adjust(1)
-        mes = await message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+        mes = await call.message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
         await state.update_data(event_message_id=mes.message_id)
 
 
@@ -549,7 +549,9 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
 
 
 @router.callback_query(ChristmasGroupSelectCallback.filter(F.groupID != 0))
-async def christmasgroupSelected(call: CallbackQuery, callback_data: ChristmasGroupSelectCallback):
+async def christmasgroupSelected(call: CallbackQuery, callback_data: ChristmasGroupSelectCallback, state: FSMContext):
+    data = {'group_id':callback_data.groupID, 'creator_id':call.from_user.id, 'event_type':EventType.SANTA}
+    await api.create_event(data)
     await call.message.answer("Новый год будет")
     await send_christmas(callback_data)
     await call.answer()
@@ -609,12 +611,12 @@ async def add_santa(call: CallbackQuery):
                 pass
             await call.answer()
         else:
-            call.answer("Пожалуйста напишите боту (нажмите start)")
-    await call.answer("Вы теперь можете дарить подарки")
+            call.answer("Пожалуйста напишите боту(нажмите start)")
+    await call.answer("Вы теперь можете дарить говно")
 
 @router.callback_query(F.data.in_(['no_christmas']))
 async def add_grinch(call: CallbackQuery):
-    santa = await api.add_user_to_grinch(call.from_user.id)
+    santa = await api.add_user_to_grinch(call.from_user.id, call.from_user.full_name)
     if "error" in santa:
         await call.answer(santa["error"])
     else:
@@ -627,8 +629,8 @@ async def add_grinch(call: CallbackQuery):
                 pass
             await call.answer()
         else:
-            await call.answer("Пожалуйста напишите боту (нажмите start)")
-    await call.answer("Вы теперь не можете дарить подарки")
+            await call.answer("Пожалуйста напишите боту(нажмите start)")
+    await call.answer("Вы теперь не можете дарить говно")
 
 
 
