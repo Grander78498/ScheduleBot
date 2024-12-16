@@ -551,9 +551,12 @@ async def swap_print(call: CallbackQuery, callback_data: QueueSelectForSwapCallb
 @router.callback_query(ChristmasGroupSelectCallback.filter(F.groupID != 0))
 async def christmasgroupSelected(call: CallbackQuery, callback_data: ChristmasGroupSelectCallback, state: FSMContext):
     data = {'group_id':callback_data.groupID, 'creator_id':call.from_user.id, 'event_type':EventType.SANTA}
-    await api.create_event(data)
-    await call.message.answer("Новый год будет")
-    await send_christmas(callback_data)
+    thread_id = await api.create_event(data)
+    if thread_id<0:
+        await call.message.answer("Новый год уже есть, еблан")
+    else:
+        await call.message.answer("Новый год будет")
+        await send_christmas(callback_data,thread_id)
     await call.answer()
 
 
@@ -598,7 +601,12 @@ async def add_queue(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.in_(['christmas']))
 async def add_santa(call: CallbackQuery):
-    santa = await api.add_user_to_santa(call.from_user.id, call.from_user.full_name)
+    santa = await api.add_user_to_santa(call.from_user.id, call.from_user.full_name, call.message.chat.id)
+    mes, count = api.update_santa(call.message.chat.id)
+    try:
+        await bot.edit_message_text(chat_id=call.message.chat.id,message_id=mes, text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков. Количество участников сейчас {}".format(count))
+    except:
+        pass
     if "error" in santa:
         await call.answer(santa["error"])
     else:
@@ -616,7 +624,12 @@ async def add_santa(call: CallbackQuery):
 
 @router.callback_query(F.data.in_(['no_christmas']))
 async def add_grinch(call: CallbackQuery):
-    santa = await api.add_user_to_grinch(call.from_user.id, call.from_user.full_name)
+    santa = await api.add_user_to_grinch(call.from_user.id, call.from_user.full_name, call.message.chat.id)
+    mes, count = api.update_santa(call.message.chat.id)
+    try:
+        await bot.edit_message_text(chat_id=call.message.chat.id,message_id=mes, text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков. Количество участников сейчас {}".format(count))
+    except:
+        pass
     if "error" in santa:
         await call.answer(santa["error"])
     else:
