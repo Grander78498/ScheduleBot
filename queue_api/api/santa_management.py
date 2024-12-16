@@ -4,7 +4,7 @@ from .celery_calls import send_render_task
 
 async def add_user_to_santa(tg_id: int, full_name: str):
     try:
-        santa = await Santa.objects.aget()
+        santa = await Santa.objects.all()
     except:
         return {"error": "Вы не можете добавиться в клуб Тайного Санты, поскольку набор уже завершён"}
     user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id)

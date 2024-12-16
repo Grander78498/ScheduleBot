@@ -609,12 +609,12 @@ async def add_santa(call: CallbackQuery):
                 pass
             await call.answer()
         else:
-            call.answer("Пожалуйста напишите боту(нажмите start)")
-    await call.answer("Вы теперь можете дарить говно")
+            call.answer("Пожалуйста напишите боту (нажмите start)")
+    await call.answer("Вы теперь можете дарить подарки")
 
 @router.callback_query(F.data.in_(['no_christmas']))
 async def add_grinch(call: CallbackQuery):
-    santa = await api.add_user_to_grinch(call.from_user.id, call.from_user.full_name)
+    santa = await api.add_user_to_grinch(call.from_user.id)
     if "error" in santa:
         await call.answer(santa["error"])
     else:
@@ -627,8 +627,8 @@ async def add_grinch(call: CallbackQuery):
                 pass
             await call.answer()
         else:
-            await call.answer("Пожалуйста напишите боту(нажмите start)")
-    await call.answer("Вы теперь не можете дарить говно")
+            await call.answer("Пожалуйста напишите боту (нажмите start)")
+    await call.answer("Вы теперь не можете дарить подарки")
 
 
 
