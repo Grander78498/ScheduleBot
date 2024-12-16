@@ -29,7 +29,9 @@ class ChristmasGroupSelectCallback(CallbackData, prefix="chselectGroup"):
     groupID: int
     is_admin: bool
 
-
+class StopChristmasGroupSelectCallback(CallbackData, prefix="stchselectGroup"):
+    groupID: int
+    is_admin: bool
 
 class QueueIDCallback(CallbackData, prefix="queueID"):
     queueID: int

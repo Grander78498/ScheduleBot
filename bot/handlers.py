@@ -98,6 +98,20 @@ async def mary_crhistmas(message: types.Message, state: FSMContext):
         mes = await message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
         await state.update_data(event_message_id=mes.message_id)
 
+@router.message(Command("stop_santa"))
+async def stop_mary_crhistmas(message: types.Message):
+    groups = await api.check_admin(message.chat.id)
+    if len(groups) == 0:
+        await message.answer("У тебя нет групп, где ты админ, нового года не будет")
+    else:
+        builder = InlineKeyboardBuilder()
+        await state.update_data(event_type=EventType.SANTA)
+        for group in groups:
+            builder.button(text=group.name,
+                            callback_data=StopChristmasGroupSelectCallback(groupID=group.tg_id, is_admin = True))
+        builder.adjust(1)
+        mes = await message.answer("У тебя есть доступ к этим группам", reply_markup=builder.as_markup())
+        await state.update_data(event_message_id=mes.message_id)
 
 
 @router.message(Command("change_topic"))
@@ -558,6 +572,22 @@ async def christmasgroupSelected(call: CallbackQuery, callback_data: ChristmasGr
         await call.message.answer("Новый год будет")
         await send_christmas(callback_data,thread_id)
     await call.answer()
+
+@router.callback_query(StopChristmasGroupSelectCallback.filter(F.groupID != 0))
+async def stchristmasgroupSelected(call: CallbackQuery, callback_data: StopChristmasGroupSelectCallback, state: FSMContext):
+    mes, count = await api.update_santa(callback_data.groupID)
+    try:
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=mes, 
+                                    text="НОВЫЙ ГОД БУДЕТ. Вступите в клуб Угольных носков. Количество участников сейчас {}".format(count))
+    except:
+        pass
+    await call.answer()
+    pairs = await api.get_pairs(callback_data.groupID)
+    for i in pairs:
+        try:
+             await bot.send_message(chat_id=i["id1"], text="Ты, {}. В ходе гемблинга тебе выпал ||{}||. Придумай ему подарок на X рублей".format(i["name1"],i["name2"]))
+        except:
+             await bot.send_message(chat_id=(await api.get_group_admin(callback_data.groupID))[0], text="У твоего миньёна {} не открыт бот. Исправляй".format(i["name1"]))
 
 
 @router.callback_query(GroupSelectCallback.filter(F.groupID != 0))
