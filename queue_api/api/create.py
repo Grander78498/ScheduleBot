@@ -40,20 +40,23 @@ async def add_user_to_group(group_id: int,
         print(e)
 
 
-async def create_event(data_dict):
-    message = data_dict['text']
+async def create_event(data_dict: dict):
+    message = data_dict.get('text', 'Хохохо')
     group_id = data_dict['group_id']
     creator_id = data_dict['creator_id']
     creator = await TelegramUser.objects.aget(pk=creator_id)
-    tz = creator.tz
-    tz = str(tz).rjust(2, '0') + '00'
-    if 'sec' in data_dict:
-        date = datetime.strptime(
-            f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
-            "%Y-%m-%d %H:%M:%S%z")
+    if data_dict['event_type'] == EventType.SANTA:
+        date = datetime(1970, 1, 1, 0, 0)
     else:
-        date = datetime.strptime(f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
-                                  "%Y-%m-%d %H:%M%z")
+        tz = creator.tz
+        tz = str(tz).rjust(2, '0') + '00'
+        if 'sec' in data_dict:
+            date = datetime.strptime(
+                f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}:{str(data_dict['sec']).rjust(2, '0')}+{tz}",
+                "%Y-%m-%d %H:%M:%S%z")
+        else:
+            date = datetime.strptime(f"{data_dict['year']}-{str(data_dict['month']).rjust(2, '0')}-{str(data_dict['day']).rjust(2, '0')} {data_dict['hm']}+{tz}",
+                                    "%Y-%m-%d %H:%M%z")
     group = await TelegramGroup.objects.aget(pk=group_id)
     match data_dict['event_type']:
         case EventType.QUEUE:
@@ -66,8 +69,11 @@ async def create_event(data_dict):
                 await DeadlineStatus.objects.acreate(user_id=member.user_id, deadline_id=deadline.pk)
             event_id = deadline.pk
         case EventType.SANTA:
-            santa = await Santa.objects.acreate(text=message, date=date, creator=creator, group=group)
-            event_id = santa.pk
+            _, created = await Santa.objects.aget_or_create(text=message, date=date, creator=creator, group=group)
+            if created:
+                return group.thread_id
+            else:
+                return -1
         case _:
             ...
         

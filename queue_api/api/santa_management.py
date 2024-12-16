@@ -2,9 +2,9 @@ from .imports import *
 from .celery_calls import send_render_task
 
 
-async def add_user_to_santa(tg_id: int, full_name: str):
+async def add_user_to_santa(tg_id: int, full_name: str, group_id: int):
     try:
-        santa = await Santa.objects.all()
+        santa = await Santa.objects.aget(group_id=group_id)
     except:
         return {"error": "Вы не можете добавиться в клуб Тайного Санты, поскольку набор уже завершён"}
     user, user_created = await TelegramUser.objects.aget_or_create(pk=tg_id)
@@ -13,15 +13,20 @@ async def add_user_to_santa(tg_id: int, full_name: str):
     if user_created:
         return {"started": False}
 
-    # if created:
-    #     await send_render_task(1, False)
-
     return {"started": user.is_started, "santa_member": not created}
 
 
-async def add_user_to_grinch(tg_id: int):
+async def update_santa(group_id: int):
+    santa = await Santa.objects.select_related('event_ptr').aget(group_id=group_id)
+    count_members = await SantaMember.objects.filter(santa=santa).acount()
+    message, _ = await Message.objects.aget_or_create(event=santa.event_ptr, chat_id=group_id)
+    return message.message_id, count_members
+
+
+async def add_user_to_grinch(tg_id: int, group_id: int):
     try:
-        santa_member = await SantaMember.objects.aget(user_id=tg_id)
+        santa = await Santa.objects.aget(group_id=group_id)
+        santa_member = await SantaMember.objects.aget(user_id=tg_id, santa=santa)
 
         await santa_member.adelete()
         return 'Correct'
@@ -30,10 +35,10 @@ async def add_user_to_grinch(tg_id: int):
     
 
 async def get_pairs(group_id: int):
-    santa_members = await SantaMember.objects.all().select_related('user__full_name')
-    copied_members = await SantaMember.objects.all().order_by('?')
+    santa_members = await SantaMember.objects.select_related('user__full_name').aget(group_id=group_id)
+    copied_members = [member async for member in SantaMember.objects.all().order_by('?')]
     while all(el1.user_id != el2.user_id for (el1, el2) in zip(santa_members, copied_members)):
-        copied_members = await SantaMember.objects.all().order_by('?')
+        copied_members = [member async for member in SantaMember.objects.all().order_by('?')]
     return [
         {
             "id1": el1.user_id,
@@ -41,4 +46,5 @@ async def get_pairs(group_id: int):
             'id2': el2.user_id,
             'name2': el2.user.full_name
         }
+        for (el1, el2) in zip(santa_members, copied_members)
     ]

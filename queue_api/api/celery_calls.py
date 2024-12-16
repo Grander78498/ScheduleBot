@@ -74,15 +74,15 @@ async def send_render_task(queue_id: int, private: bool):
         await render_queue(queue_id, private)
 
 
-async def santa_render_task(santa_id: int, private: bool):
-    if not settings.DEBUG:
-        santa = await Santa.objects.aget(pk=santa_id)
-        if not santa.is_rendering:
-            from queue_api.tasks import task_render_queue
+# async def santa_render_task(santa_id: int, private: bool):
+#     if not settings.DEBUG:
+#         santa = await Santa.objects.aget(pk=santa_id)
+#         if not santa.is_rendering:
+#             from queue_api.tasks import task_render_queue
 
-            santa.is_rendering = True
-            task_render_queue.apply_async(args=(santa.pk, private), countdown=0.75)
-            await santa.asave()
-    else:
-        from bot import send_christmas
-        await send_christmas(queue_id, private)
+#             santa.is_rendering = True
+#             task_render_queue.apply_async(args=(santa.pk, private), countdown=0.75)
+#             await santa.asave()
+#     else:
+#         from bot import send_christmas
+#         await send_christmas(queue_id, private)

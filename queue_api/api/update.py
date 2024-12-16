@@ -8,8 +8,12 @@ from .utils import check_timezone
 from .deadline_management import print_deadline_message
 
 
-async def update_message_id(event_id: int, message_id: int, chat_id: int):
-    event = await Event.objects.aget(pk=event_id)
+async def update_message_id(event_id: int | None, message_id: int, chat_id: int):
+    if event_id is None:
+        santa = await Santa.objects.select_related('event_ptr').aget(group_id=chat_id)
+        event = santa.event_ptr
+    else:
+        event = await Event.objects.aget(pk=event_id)
     message, _ = await Message.objects.aget_or_create(event=event, chat_id=chat_id)
     message.message_id = message_id
     await message.asave()
